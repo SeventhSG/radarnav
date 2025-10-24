@@ -1,35 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>RadarNav Mobile</title>
-  <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RadarNav</title>
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="nosleep.js"></script>
 </head>
 <body>
-  <div id="map"></div>
+<div id="map"></div>
 
-  <!-- Speed / PiP -->
-  <canvas id="pipCanvas" width="320" height="180"></canvas>
-  <video id="pipVideo" style="display:none;"></video>
-  <button id="pipToggle">Enable PiP</button>
-
-  <!-- Alert popup -->
+<div id="uiOverlay">
+  <div id="speedDisplay">0 km/h</div>
   <div id="alertPopup" class="hidden"><span id="alertText"></span></div>
-
-  <!-- Avg zone bar -->
   <div id="avgZoneBar" class="hidden">
     <div id="progressFill"></div>
     <div id="carMarker"></div>
-    <span id="avgSpeedVal"></span>/<span id="zoneLimitVal"></span> km/h
+    <div id="avgSpeedVal"></div>
+    <div id="zoneLimitVal"></div>
   </div>
+  <button id="pipToggle">Enable PiP</button>
+</div>
 
-  <!-- Admin menu -->
-  <div id="adminMenu" class="hidden"></div>
+<canvas id="pipCanvas" width="320" height="180" style="display:none;"></canvas>
+<video id="pipVideo" style="display:none;"></video>
 
-  <!-- JS -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="nosleep.js"></script>
-  <script src="app.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
