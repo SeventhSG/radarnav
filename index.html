@@ -1,49 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RadarNav Turkey</title>
-<link rel="stylesheet" href="style.css">
-<link rel="manifest" href="manifest.json">
-<!-- Leaflet -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>RadarNav Mobile</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 </head>
 <body>
+  <div id="map"></div>
 
-<div id="map"></div>
-
-<!-- Alerts -->
-<div id="alertPopup" class="overlay hidden">
-  <div id="alertText">Alert</div>
-</div>
-
-<!-- Speed / Avg Zone -->
-<div id="avgZoneBar" class="overlay hidden">
-  <div id="avgSpeedVal">0</div>
-  <div id="zoneLimitVal">0</div>
-  <div id="progressTrack">
-    <div id="progressFill"></div>
-    <div id="carMarker"></div>
+  <!-- Alerts -->
+  <div id="alertPopup" class="hidden">
+    <div id="alertText">Alert!</div>
   </div>
-</div>
 
-<!-- PiP hidden video -->
-<video id="pipVideo" style="display:none;"></video>
-<canvas id="pipCanvas" width="300" height="150"></canvas>
-<button id="pipToggle" class="overlayButton">Enable PiP</button>
-
-<!-- Admin menu collapsible -->
-<div id="adminMenu" class="overlay">
-  <button id="adminToggle">Admin Menu ⚙️</button>
-  <div id="adminContent" class="hidden">
-    <button id="testRadarBtn">Test Radar</button>
-    <button id="testAvgBtn">Test Avg Zone</button>
-    <button id="testAlertBtn">Test Alert</button>
+  <!-- Speed / avg zone -->
+  <div id="avgZoneBar" class="hidden">
+    <div id="avgSpeedVal">0</div>
+    <div id="progressContainer">
+      <div id="progressFill"></div>
+      <div id="carMarker"></div>
+    </div>
+    <div id="zoneLimitVal">0</div>
   </div>
-</div>
 
-<script src="app.js"></script>
+  <!-- PiP canvas -->
+  <canvas id="pipCanvas" width="200" height="100"></canvas>
+  <button id="pipToggle">Enable PiP</button>
+
+  <!-- Scripts -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
