@@ -1,9 +1,22 @@
 {
   "name": "RadarNav Mobile",
   "short_name": "RadarNav",
+  "description": "Real-time radar, camera, and speed trap alerts",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#071021",
   "theme_color": "#00e5ff",
-  "orientation": "portrait-primary"
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
 }
