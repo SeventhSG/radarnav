@@ -1,0 +1,4 @@
+[
+  { "id":"r1", "lat":40.730610, "lng":-73.935242, "type":"speed_camera", "label":"Fixed speed camera" },
+  { "id":"r2", "lat":40.732610, "lng":-73.937242, "type":"speed_camera", "label":"Mobile camera reported" }
+]
