@@ -1,40 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>RadarNav Turkey</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-<style>
-  html, body, #map { height: 100%; margin:0; padding:0; }
-  #alertPopup {
-    position: fixed; top:20px; left:50%; transform:translateX(-50%);
-    background:#122033; color:white; padding:12px 20px; border-radius:14px;
-    font-family:sans-serif; font-size:16px; z-index:999; display:none;
-  }
-  #avgZoneBar { position:fixed; bottom:20px; left:20px; width:300px; height:24px;
-    background:#222; border-radius:12px; display:none; z-index:999; }
-  #progressFill { height:100%; width:0%; border-radius:12px; background:linear-gradient(90deg,#0bf,#0ff);}
-  #carMarker { position:absolute; top:-4px; font-size:18px; }
-  #speedDisplay { position:fixed; top:20px; right:20px; background:#0b2a33;color:#0ff;
-    font-size:22px;padding:8px 16px;border-radius:12px;font-family:sans-serif;}
-  #pipToggle { position:fixed; bottom:20px; right:20px;padding:8px 14px; background:#0b2a33;
-    color:#0ff;border:none;border-radius:10px;cursor:pointer; font-family:sans-serif;}
-  canvas { display:none; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RadarNav Prototype</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 </head>
 <body>
-<div id="map"></div>
-<div id="alertPopup"></div>
-<div id="avgZoneBar"><div id="progressFill"><span id="carMarker">🚗</span></div>
-<span id="avgSpeedVal" style="position:absolute;right:10px;top:-28px;color:#0ff"></span>
-<span id="zoneLimitVal" style="position:absolute;right:10px;top:-48px;color:#fff"></span>
-</div>
-<div id="speedDisplay">0 km/h</div>
-<button id="pipToggle">Enable PiP</button>
-<video id="pipVideo" autoplay muted></video>
-<canvas id="pipCanvas" width="300" height="120"></canvas>
-<audio id="chime" src="assets/chime.mp3" preload="auto"></audio>
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script src="app.js"></script>
+  <div id="map"></div>
+
+  <!-- Overlay UI -->
+  <div id="overlayUI">
+    <div id="alertPopup" class="hidden"><span id="alertText">Alert</span></div>
+    <div id="avgZoneBar" class="hidden">
+      <span id="avgSpeedVal">0</span> / <span id="zoneLimitVal">0</span>
+      <div id="progressBar"><div id="progressFill"></div><div id="carMarker"></div></div>
+    </div>
+    <div id="speedDisplay">0 km/h</div>
+    <div id="adminMenu"></div>
+  </div>
+
+  <!-- Hidden video for PiP if needed -->
+  <video id="pipVideo" style="display:none;"></video>
+  <canvas id="pipCanvas" width="320" height="180" style="display:none;"></canvas>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
