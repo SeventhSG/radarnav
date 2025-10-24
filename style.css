@@ -1,114 +1,31 @@
-/* Full-screen map */
-html, body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
-  font-family: Arial, sans-serif;
-  touch-action: manipulation;
+html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; }
+#map { width:100%; height:100%; z-index:1; }
+#uiOverlay {
+  position:absolute; top:0; left:0; width:100%; height:100%; z-index:999; pointer-events:none;
 }
-
-#map {
-  position: absolute;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  z-index: 0;
-}
-
-/* Alert popup */
 #alertPopup {
-  position: absolute;
-  top: 30%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(20,20,40,0.9);
-  color: #fff;
-  font-size: 1.4em;
-  padding: 20px 30px;
-  border-radius: 12px;
-  text-align: center;
-  z-index: 999;
-  pointer-events: none;
-  transition: opacity 0.3s;
+  position:absolute; top:20%; left:50%; transform:translateX(-50%);
+  background:#122033; color:white; padding:10px 20px; border-radius:12px; font-size:20px;
+  pointer-events:auto; text-align:center; z-index:1000;
 }
-
-#alertPopup.hidden {
-  display: none;
-}
-
-/* Avg zone bar */
 #avgZoneBar {
-  position: absolute;
-  bottom: 5%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 90%;
-  background: rgba(0,0,0,0.3);
-  padding: 10px;
-  border-radius: 10px;
-  color: #fff;
-  font-size: 1em;
-  z-index: 998;
+  position:absolute; bottom:20%; left:10%; width:80%; height:40px; background:#0b2a33; border-radius:10px;
+  display:none; z-index:1000; pointer-events:none;
 }
-
-#progressContainer {
-  position: relative;
-  height: 10px;
-  background: rgba(255,255,255,0.2);
-  border-radius: 5px;
-  margin: 5px 0;
-}
-
 #progressFill {
-  height: 100%;
-  width: 0%;
-  background: linear-gradient(90deg, #00e5ff, #ff0000);
-  border-radius: 5px;
+  height:100%; width:0%; background:linear-gradient(90deg, #00e5ff 0%, #00a3b7 100%);
+  border-radius:10px;
 }
-
 #carMarker {
-  position: absolute;
-  top: -5px;
-  width: 10px; height: 20px;
-  background: #fff;
-  transform: translateX(-50%);
-  border-radius: 3px;
+  position:absolute; top:-5px; width:10px; height:50px; background:red; left:0;
 }
-
-/* PiP canvas */
-#pipCanvas {
-  position: fixed;
-  bottom: 10px;
-  right: 10px;
-  width: 200px;
-  height: 100px;
-  border: 2px solid #00e5ff;
-  border-radius: 8px;
-  z-index: 1000;
-  background: rgba(0,0,0,0.6);
+#speedDisplay {
+  position:absolute; top:5%; left:50%; transform:translateX(-50%); font-size:28px; color:#00e5ff; z-index:1000;
 }
-
-/* PiP toggle button */
 #pipToggle {
-  position: fixed;
-  bottom: 120px;
-  right: 10px;
-  z-index: 1000;
-  padding: 8px 12px;
-  background: #00e5ff;
-  color: #000;
-  font-weight: bold;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
+  position:absolute; top:5%; right:5%; z-index:1000; pointer-events:auto;
 }
-
-/* Admin menu: 3 tappable regions (full width, invisible) */
-body::before, body::after, #map::after {
-  content: '';
-  position: absolute;
-  top:0; bottom:0;
-  width: 33.33%;
-  pointer-events: all;
+#adminMenu {
+  position:absolute; bottom:5%; left:50%; transform:translateX(-50%); z-index:1000; display:flex; gap:10px;
 }
+#adminMenu button { pointer-events:auto; padding:8px 12px; font-size:16px; }
