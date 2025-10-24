@@ -1,96 +1,72 @@
-html, body, #map {
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  touch-action: none;
-  overflow: hidden;
-  font-family: 'Inter', Arial, sans-serif;
-}
-
-#pipCanvas {
+html, body, #map { height:100%; margin:0; padding:0; }
+#uiOverlay {
   position: absolute;
-  bottom: 20px;
-  right: 20px;
-  width: 160px;
-  height: 90px;
-  border: 2px solid #00e5ff;
-  border-radius: 12px;
-  z-index: 9999;
-  background: #071021;
+  top:0; left:0; right:0; bottom:0;
+  pointer-events:none;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;
 }
-
-#pipToggle {
-  position: absolute;
-  bottom: 120px;
-  right: 20px;
-  z-index: 9999;
-  padding: 8px 14px;
-  background: #122033;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
+#speedDisplay {
+  margin-top:10px;
+  font-size:32px;
+  color:#00e5ff;
+  background:rgba(0,0,0,0.4);
+  padding:6px 12px;
+  border-radius:8px;
+  pointer-events:auto;
 }
-
 #alertPopup {
-  position: absolute;
-  top: 40%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(255,0,0,0.85);
-  color: white;
-  font-size: 22px;
-  padding: 16px 28px;
-  border-radius: 18px;
-  text-align: center;
-  z-index: 9999;
+  position:absolute;
+  top:50%;
+  transform:translateY(-50%);
+  font-size:28px;
+  color:#fff;
+  background:red;
+  padding:12px 20px;
+  border-radius:12px;
+  pointer-events:auto;
+  text-align:center;
+  z-index:1000;
 }
-
 #avgZoneBar {
-  position: absolute;
-  bottom: 10px;
-  left: 10px;
-  width: 70%;
-  height: 24px;
-  background: rgba(10,20,40,0.5);
-  border-radius: 12px;
-  overflow: hidden;
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 8px;
-  color: #fff;
-  font-size: 14px;
+  position:absolute;
+  bottom:10px;
+  width:80%;
+  height:30px;
+  background:rgba(0,0,0,0.3);
+  border-radius:15px;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
 }
-
 #progressFill {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  background: linear-gradient(90deg, rgba(0,229,255,0.5), rgba(0,229,255,0.8));
-  width: 0%;
-  z-index: -1;
+  height:100%;
+  width:0%;
+  background:lime;
+  transition:width 0.2s;
 }
-
 #carMarker {
-  position: absolute;
-  top: -2px;
-  width: 8px;
-  height: 28px;
-  background: #ff0;
-  border-radius: 4px;
+  position:absolute;
+  top:-5px;
+  width:10px;
+  height:40px;
+  background:#00e5ff;
+  border-radius:5px;
 }
-
-#adminMenu {
-  position: absolute;
-  top: 10%;
-  right: 5%;
-  background: rgba(0,0,0,0.85);
-  padding: 12px;
-  border-radius: 12px;
-  z-index: 9999;
-  color: #fff;
+#avgSpeedVal, #zoneLimitVal { position:absolute; top:-30px; color:#fff; font-size:14px; }
+#pipToggle {
+  position:absolute;
+  bottom:50px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:1000;
+  pointer-events:auto;
+  padding:6px 12px;
+  font-size:14px;
+  border:none;
+  border-radius:8px;
+  background:rgba(0,0,0,0.5);
+  color:#fff;
 }
