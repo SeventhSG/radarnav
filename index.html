@@ -1,32 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>RadarNav</title>
-<link rel="stylesheet" href="style.css">
-<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>RadarNav</title>
+
+  <!-- styles -->
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Google Maps JS (replace YOUR_GOOGLE_MAPS_API_KEY) -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY"></script>
+
+  <!-- NoSleep (prevent screen sleeping) -->
+  <script src="https://cdn.jsdelivr.net/npm/nosleep.js@0.12.0/dist/NoSleep.min.js"></script>
 </head>
 <body>
-<div id="map"></div>
+  <!-- MAP -->
+  <div id="map"></div>
 
-<!-- Speed display + PiP overlay -->
-<div id="speedOverlay">
-  <div id="speedText">0 km/h</div>
-  <canvas id="pipCanvas" width="200" height="80"></canvas>
-</div>
+  <!-- UI OVERLAYS -->
+  <div id="uiOverlay">
 
-<!-- Alert popup -->
-<div id="alertPopup" class="hidden"></div>
+    <!-- Speed & PiP -->
+    <div id="speedOverlay" class="overlay-ui">
+      <div id="speedText">0 km/h</div>
+      <canvas id="pipCanvas" width="300" height="120" aria-hidden="true"></canvas>
+      <video id="pipVideo" autoplay muted playsinline style="display:none;"></video>
+      <button id="pipToggle" class="control-btn">Enable PiP</button>
+    </div>
 
-<!-- Admin menu -->
-<div id="adminMenu" class="collapsed">
-  <button id="testRadar">Test Radar</button>
-  <button id="testAvg">Test Avg Speed</button>
-  <button id="testAlert">Test Alert</button>
-</div>
+    <!-- Centered big alert (main-screen) -->
+    <div id="alertPopup" class="overlay-ui hidden" role="status" aria-live="assertive">
+      <span id="alertText">Alert!</span>
+    </div>
 
-<script src="nosleep.js"></script>
-<script src="app.js"></script>
+    <!-- Average speed bar (hidden unless avg-zone active and alert) -->
+    <div id="avgZoneBar" class="overlay-ui hidden">
+      <div id="avgZoneInfo">
+        <span id="avgSpeedVal">0</span> / <span id="zoneLimitVal">0</span> km/h
+      </div>
+      <div id="progressContainer">
+        <div id="progressFill"></div>
+        <div id="carMarker">🚗</div>
+      </div>
+    </div>
+
+    <!-- Floating admin menu (collapsed by default) -->
+    <div id="adminMenu" class="overlay-ui collapsed" aria-hidden="true">
+      <button id="testRadar" class="adminBtn">Test Radar</button>
+      <button id="testAvgZone" class="adminBtn">Test Avg Zone</button>
+      <button id="testClear" class="adminBtn">Clear</button>
+      <button id="reloadData" class="adminBtn">Reload Data</button>
+    </div>
+
+    <!-- Error / status small box -->
+    <div id="errorBox" class="overlay-ui hidden" aria-live="polite"></div>
+
+  </div>
+
+  <!-- app script (load last) -->
+  <script src="app.js"></script>
 </body>
 </html>
