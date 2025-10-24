@@ -1,37 +1,39 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>RadarNav Mobile</title>
-  <link rel="stylesheet" href="style.css">
-  <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>RadarNav Mobile</title>
+<link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="assets/icon.png">
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 </head>
 <body>
-  <div id="map"></div>
 
-  <!-- Alerts -->
-  <div id="alertPopup" class="hidden">
-    <div id="alertText">Alert!</div>
+<div id="map"></div>
+
+<div id="uiOverlay">
+  <div id="alertPopup"><span id="alertText">Alert</span></div>
+  <div id="avgZoneBar">
+    <div id="progressFill"></div>
+    <div id="carMarker"></div>
+    <span id="avgSpeedVal">0</span>/<span id="zoneLimitVal">0</span> km/h
   </div>
-
-  <!-- Speed / avg zone -->
-  <div id="avgZoneBar" class="hidden">
-    <div id="avgSpeedVal">0</div>
-    <div id="progressContainer">
-      <div id="progressFill"></div>
-      <div id="carMarker"></div>
-    </div>
-    <div id="zoneLimitVal">0</div>
-  </div>
-
-  <!-- PiP canvas -->
-  <canvas id="pipCanvas" width="200" height="100"></canvas>
+  <div id="speedDisplay">0 km/h</div>
   <button id="pipToggle">Enable PiP</button>
 
-  <!-- Scripts -->
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script src="app.js"></script>
+  <div id="adminMenu">
+    <button data-test="fixed">Test Fixed</button>
+    <button data-test="average">Test Average</button>
+    <button data-test="custom">Test Custom</button>
+  </div>
+</div>
+
+<video id="pipVideo" hidden></video>
+<canvas id="pipCanvas" width="320" height="180" hidden></canvas>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
