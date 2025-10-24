@@ -6,27 +6,33 @@
 <title>RadarNav</title>
 <link rel="stylesheet" href="style.css">
 <link rel="manifest" href="manifest.json">
+<link rel="icon" href="assets/icon.png">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="nosleep.js"></script>
 </head>
 <body>
 <div id="map"></div>
 
+<!-- UI Overlay -->
 <div id="uiOverlay">
   <div id="speedDisplay">0 km/h</div>
-  <div id="alertPopup" class="hidden"><span id="alertText"></span></div>
+  <div id="alertPopup" class="hidden">
+    <span id="alertText">Alert!</span>
+  </div>
   <div id="avgZoneBar" class="hidden">
     <div id="progressFill"></div>
     <div id="carMarker"></div>
-    <div id="avgSpeedVal"></div>
     <div id="zoneLimitVal"></div>
+    <div id="avgSpeedVal"></div>
   </div>
   <button id="pipToggle">Enable PiP</button>
 </div>
 
-<canvas id="pipCanvas" width="320" height="180" style="display:none;"></canvas>
-<video id="pipVideo" style="display:none;"></video>
+<!-- PiP hidden video & canvas -->
+<video id="pipVideo" autoplay muted playsinline style="display:none"></video>
+<canvas id="pipCanvas" width="300" height="200" style="display:none"></canvas>
 
-<script src="app.js"></script>
+<script src="app.js" type="module"></script>
 </body>
 </html>
