@@ -1,0 +1,140 @@
+:root{
+  --bg: #0f1724;
+  --card: rgba(255,255,255,0.06);
+  --accent: #00e5ff;
+  --danger: #ff4d4f;
+  --glass: rgba(255,255,255,0.06);
+  --text: #e6eef8;
+}
+
+html,body,#app{
+  height:100%;
+  margin:0;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  background: var(--bg);
+  color: var(--text);
+}
+
+#map {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+/* Topbar */
+#topbar{
+  position: absolute;
+  top:12px;
+  left:12px;
+  right:12px;
+  z-index: 40;
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+}
+
+#speedDisplay{
+  background: var(--card);
+  padding:8px 12px;
+  border-radius:12px;
+  font-weight:600;
+  box-shadow: 0 6px 18px rgba(2,6,23,0.6);
+}
+
+#pipToggle{
+  background: var(--glass);
+  border: none;
+  color:var(--text);
+  padding:8px 12px;
+  border-radius:12px;
+  cursor:pointer;
+  box-shadow: 0 6px 18px rgba(2,6,23,0.6);
+}
+
+/* Popup */
+#alertPopup{
+  position: absolute;
+  left:50%;
+  transform: translateX(-50%) translateY(20px);
+  bottom: 110px;
+  z-index: 45;
+  min-width:250px;
+  max-width:90%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+  border-radius:16px;
+  padding:12px 16px;
+  display:flex;
+  gap:12px;
+  align-items:center;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+  transition: transform 300ms cubic-bezier(.2,.9,.3,1), opacity 220ms;
+  opacity:1;
+  backdrop-filter: blur(6px);
+}
+
+#alertPopup.hidden{
+  opacity:0;
+  pointer-events:none;
+  transform: translateX(-50%) translateY(40px);
+}
+
+#alertIcon{ font-size:22px; }
+#alertText{ font-weight:700; font-size:16px; }
+
+/* avg zone bar */
+#avgZoneBar{
+  position: absolute;
+  left:12px;
+  right:12px;
+  bottom:12px;
+  z-index:45;
+  border-radius:14px;
+  padding:10px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+  transition: transform 300ms, opacity 200ms;
+}
+
+#avgZoneBar.hidden{ opacity:0; transform: translateY(10px); pointer-events:none; }
+
+#avgSpeeds{
+  display:flex;
+  justify-content:space-between;
+  font-weight:600;
+  margin-bottom:8px;
+}
+
+#progressWrap{ width:100%; }
+
+#progressLine{
+  position:relative;
+  height:14px;
+  border-radius:12px;
+  background: rgba(255,255,255,0.06);
+  overflow:hidden;
+}
+
+#progressFill{
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  width:0%;
+  background: linear-gradient(90deg, rgba(0,229,255,0.2), rgba(0,229,255,0.6));
+  transition: width 300ms linear, background 300ms;
+}
+
+#carMarker{
+  position:absolute;
+  top:-12px;
+  left:0%;
+  transform: translateX(-50%);
+  transition: left 300ms linear;
+  font-size:20px;
+}
+
+/* small responsive tweaks */
+@media (max-width:520px){
+  #alertPopup { bottom:140px; padding:10px; }
+  #pipToggle { padding:6px 10px; }
+}
