@@ -1,0 +1,24 @@
+const CACHE_NAME = 'radarnav-v1';
+const ASSETS = [
+  '/',
+  '/index.html',
+  '/style.css',
+  '/app.js',
+  '/radars.json',
+  '/avg_zones.json'
+];
+
+self.addEventListener('install', (ev) => {
+  ev.waitUntil(
+    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
+  );
+  self.skipWaiting();
+});
+self.addEventListener('activate', (ev) => {
+  ev.waitUntil(self.clients.claim());
+});
+self.addEventListener('fetch', (ev) => {
+  ev.respondWith(
+    caches.match(ev.request).then(resp => resp || fetch(ev.request))
+  );
+});
