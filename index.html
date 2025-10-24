@@ -1,53 +1,73 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>RadarNav Mobile</title>
-<link rel="stylesheet" href="style.css">
-<link rel="manifest" href="manifest.json">
-<!-- Leaflet -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#071021" />
+  <title>RadarNav Mobile</title>
+
+  <!-- Manifest for PWA -->
+  <link rel="manifest" href="manifest.json" />
+
+  <!-- Favicon -->
+  <link rel="icon" href="icons/icon-192.png" type="image/png" />
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <!-- App Styles -->
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- NoSleep.js -->
+  <script src="https://cdn.jsdelivr.net/npm/nosleep.js@0.12.0/dist/NoSleep.min.js"></script>
 </head>
 <body>
+
+  <!-- MAP -->
   <div id="map"></div>
 
-  <!-- Alerts -->
+  <!-- ALERT POPUP -->
   <div id="alertPopup" class="hidden">
-    <span id="alertText">Alert!</span>
+    <div id="alertText">Alert message</div>
   </div>
 
-  <!-- Speed display / PiP -->
-  <canvas id="pipCanvas" width="320" height="180"></canvas>
-  <video id="pipVideo" style="display:none;"></video>
-  <button id="pipToggle" class="overlay-btn">Enable PiP</button>
-
-  <!-- Admin menu -->
-  <div id="adminMenu" class="overlay-menu collapsed">
-    <button class="adminBtn" onclick="simulateAlert('Fixed')">Test Fixed Radar</button>
-    <button class="adminBtn" onclick="simulateAlert('Average')">Test Average Radar</button>
-    <button class="adminBtn" onclick="simulateAlert('Custom')">Test Custom Alert</button>
-    <button id="toggleAdmin" onclick="toggleAdminMenu()">Toggle Menu</button>
-  </div>
-
-  <!-- Speed / Average bar -->
-  <div id="avgZoneBar" class="hidden overlay-bar">
+  <!-- AVERAGE SPEED ZONE BAR -->
+  <div id="avgZoneBar" class="overlay-bar hidden">
     <div id="progressFill"></div>
     <div id="carMarker"></div>
-    <span id="avgSpeedVal">0</span> / <span id="zoneLimitVal">0</span> km/h
+    <div style="z-index:2; width:100%; text-align:center;">
+      <span>Avg: <span id="avgSpeedVal">0</span> km/h</span> |
+      <span>Limit: <span id="zoneLimitVal">0</span> km/h</span>
+    </div>
   </div>
 
-<script src="nosleep.js"></script>
-<script src="app.js"></script>
-<script>
-  // Admin helpers
-  function simulateAlert(type){
-    showAlert(`${type} Radar test!`);
-  }
-  function toggleAdminMenu(){
-    document.getElementById('adminMenu').classList.toggle('collapsed');
-  }
-</script>
+  <!-- SPEED DISPLAY -->
+  <canvas id="pipCanvas" width="200" height="120"></canvas>
+
+  <!-- PiP VIDEO ELEMENT (invisible, for streaming canvas) -->
+  <video id="pipVideo" class="hidden" playsinline></video>
+
+  <!-- BUTTONS -->
+  <button id="pipToggle" class="overlay-btn">Enable PiP</button>
+
+  <!-- ADMIN MENU (hidden toggle with 3 taps) -->
+  <div id="adminMenu" class="overlay-menu collapsed">
+    <button class="adminBtn" id="testRadar">Test Radar Alert</button>
+    <button class="adminBtn" id="testAvgZone">Test Avg Zone</button>
+    <button class="adminBtn" id="testClear">Clear Alerts</button>
+  </div>
+
+  <!-- ERROR BOX -->
+  <div id="errorBox" class="hidden" style="
+      position:absolute; bottom:80px; left:50%; transform:translateX(-50%);
+      background:#ff3b3b; color:white; padding:10px 20px;
+      border-radius:12px; z-index:9999; font-weight:bold;">
+  </div>
+
+  <!-- APP LOGIC -->
+  <script src="app.js"></script>
 </body>
 </html>
