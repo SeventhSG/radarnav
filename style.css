@@ -1,29 +1,136 @@
-html, body { margin:0; padding:0; height:100%; overflow:hidden; font-family:Arial,sans-serif;}
-#map { position:absolute; top:0; left:0; right:0; bottom:0; z-index:0; }
+/* Fullscreen map */
+html, body, #map {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  touch-action: none;
+  font-family: 'Arial', sans-serif;
+}
 
+/* Alert popup */
 #alertPopup {
-    position:absolute; top:20%; left:50%; transform:translateX(-50%);
-    background:rgba(18,32,51,0.9); color:white; padding:15px 25px;
-    border-radius:12px; font-size:1.2em; z-index:9999; text-align:center;
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(255, 0, 0, 0.9);
+  color: #fff;
+  font-size: 22px;
+  font-weight: bold;
+  padding: 12px 20px;
+  border-radius: 12px;
+  z-index: 9999;
+  text-align: center;
+  pointer-events: none;
+  box-shadow: 0 0 15px rgba(0,0,0,0.5);
+}
+.hidden { display: none; }
+
+/* PiP Canvas */
+#pipCanvas {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  width: 180px;
+  height: 100px;
+  z-index: 9998;
+  border-radius: 10px;
+  box-shadow: 0 0 8px rgba(0,0,0,0.5);
 }
 
-#avgZoneBar {
-    position:absolute; top:35%; left:50%; transform:translateX(-50%);
-    width:80%; height:40px; background:rgba(0,0,0,0.3); border-radius:12px;
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    font-size:16px; color:#fff; z-index:9999;
+/* PiP Toggle button */
+.overlay-btn {
+  position: absolute;
+  bottom: 120px;
+  right: 10px;
+  z-index: 9999;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background-color: rgba(0, 229, 255, 0.85);
+  color: #000;
+  font-weight: bold;
+  border: none;
+  cursor: pointer;
 }
 
-#progressContainer { position:relative; width:100%; height:8px; background:rgba(255,255,255,0.2); border-radius:4px; margin-top:5px; }
-#progressFill { height:100%; width:0%; border-radius:4px; background:linear-gradient(90deg,#00e5ff,#00a3b7);}
-#carMarker { position:absolute; top:-4px; width:12px; height:12px; border-radius:50%; background:#ffd700;}
-
-#pipCanvas { position:absolute; bottom:10px; right:10px; width:200px; height:100px; z-index:9999; border-radius:12px; background:#071021;}
-#pipToggle { position:absolute; bottom:120px; right:10px; z-index:9999; padding:5px 10px; font-size:14px; border-radius:6px;}
-
-#adminMenu {
-    position:absolute; top:10px; left:50%; transform:translateX(-50%);
-    background:rgba(0,0,0,0.7); padding:10px 20px; border-radius:10px; display:flex; gap:10px; z-index:9999; display:none;
+/* Average zone bar */
+.overlay-bar {
+  position: absolute;
+  bottom: 10px;
+  left: 5%;
+  width: 90%;
+  height: 36px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 12px;
+  overflow: hidden;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  font-size: 16px;
+  color: #fff;
 }
-#adminMenu.visible { display:flex; }
-#adminMenu button { padding:5px 10px; border:none; border-radius:6px; background:#00e5ff; color:#000; font-weight:bold;}
+#progressFill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, rgba(0,229,255,0.3), rgba(0,229,255,0.7));
+  z-index: 0;
+}
+#carMarker {
+  position: absolute;
+  top: 0;
+  width: 6px;
+  height: 36px;
+  background-color: #ff0;
+  z-index: 1;
+  border-radius: 3px;
+}
+
+/* Admin menu */
+.overlay-menu {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 9999;
+  background-color: rgba(0,0,0,0.6);
+  border-radius: 12px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.overlay-menu.collapsed { display: none; }
+.adminBtn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: none;
+  background-color: rgba(255, 255, 255, 0.85);
+  color: #000;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* Ensure overlays are always on top of map tiles */
+.leaflet-container {
+  z-index: 0;
+}
+
+/* Mobile improvements */
+body, html {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Optional: improve PiP size */
+@media (max-width: 500px) {
+  #pipCanvas { width: 140px; height: 80px; }
+  .overlay-btn { padding: 6px 10px; font-size: 14px; }
+  .overlay-bar { height: 28px; font-size: 14px; }
+}
