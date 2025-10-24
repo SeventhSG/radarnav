@@ -1,4 +1,4 @@
-// app.js - RadarNav prototype with SCDB integration & mobile-friendly PiP
+// app.js - RadarNav with improved UI layering, admin menu & SCDB radar detection
 
 let map, userMarker;
 let radars = [];
@@ -21,19 +21,37 @@ const progressFill = document.getElementById('progressFill');
 const carMarker = document.getElementById('carMarker');
 const speedDisplay = document.getElementById('speedDisplay');
 const pipToggle = document.getElementById('pipToggle');
+const adminMenu = document.getElementById('adminMenu'); // new container
 
 const chime = new Audio('assets/chime.mp3');
 
-function isMobile() {
-  return /Mobi|Android/i.test(navigator.userAgent);
+// --- UI layering fix ---
+function setupUI() {
+  const uiElements = [alertPopup, avgZoneBar, speedDisplay, pipToggle, adminMenu];
+  uiElements.forEach(el => {
+    el.style.position = 'absolute';
+    el.style.zIndex = 9999;
+    el.style.pointerEvents = 'auto';
+  });
+
+  // enlarge UI
+  avgZoneBar.style.height = '50px';
+  avgSpeedVal.style.fontSize = '24px';
+  zoneLimitVal.style.fontSize = '24px';
+  carMarker.style.height = '24px';
+  speedDisplay.style.fontSize = '32px';
+  pipToggle.style.fontSize = '18px';
 }
 
+// --- SCDB / avg zones / map ---
 async function init() {
+  setupUI();
   await loadData();
   initMap();
   setupPiPButton();
   startGeolocation();
   startCanvasLoop();
+  setupAdminMenu();
 }
 
 async function loadData() {
@@ -42,6 +60,7 @@ async function loadData() {
     const data = await res.json();
     radars = data.cameras || data;
     console.log(`Loaded ${radars.length} cameras from SCDB`);
+    if(!radars.length) console.warn("No cameras loaded - check JSON path!");
 
     const z = await fetch('avg_zones.json');
     avgZones = await z.json();
@@ -56,44 +75,42 @@ function initMap() {
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
 
-  userMarker = L.circleMarker([0, 0], { radius: 8, color: '#00e5ff', fillColor: '#00a3b7', fillOpacity: 1 }).addTo(map);
+  userMarker = L.circleMarker([0, 0], { radius: 10, color: '#00e5ff', fillColor: '#00a3b7', fillOpacity: 1 }).addTo(map);
 
+  // show radars
   radars.forEach(r => {
     const color = r.type === 'average' ? '#88f' : '#ffcc00';
-    const circle = L.circle([r.lat, r.lng], { radius: 12, color, weight: 2 }).addTo(map);
+    const circle = L.circle([r.lat, r.lng], { radius: 14, color, weight: 3 }).addTo(map);
     circle.bindPopup(`${r.label || 'Radar'}${r.speedLimit ? ' - ' + r.speedLimit + ' km/h' : ''}`);
   });
 
   avgZones.forEach(z => {
-    L.polyline([[z.start.lat, z.start.lng],[z.end.lat, z.end.lng]], { color:'#88f', weight:4, opacity:0.7 }).addTo(map);
+    L.polyline([[z.start.lat, z.start.lng],[z.end.lat, z.end.lng]], { color:'#88f', weight:6, opacity:0.8 }).addTo(map);
   });
 }
 
+// --- GPS ---
 function startGeolocation() {
-  if (!('geolocation' in navigator)) { alert('Geolocation not supported'); return; }
+  if(!('geolocation' in navigator)){ alert('Geolocation not supported'); return; }
   watchId = navigator.geolocation.watchPosition(onPosition, onGeoError, { enableHighAccuracy:true, maximumAge:500, timeout:10000 });
 }
 
 function onGeoError(err) { console.warn('Geo error', err); }
 
-let currentPos = null;
-let activeAvgZone = null;
-let avgZoneData = {};
-let lastAlertTime = 0;
+let currentPos=null, activeAvgZone=null, avgZoneData={}, lastAlertTime=0;
 
 function onPosition(p) {
-  const lat = p.coords.latitude, lng = p.coords.longitude;
-  const speedMps = p.coords.speed;
-  currentPos = { lat, lng, speedMps, timestamp: p.timestamp };
-  map.setView([lat, lng], map.getZoom());
-  userMarker.setLatLng([lat, lng]);
+  const lat=p.coords.latitude,lng=p.coords.longitude,speedMps=p.coords.speed;
+  currentPos={lat,lng,speedMps,timestamp:p.timestamp};
+  map.setView([lat,lng], map.getZoom());
+  userMarker.setLatLng([lat,lng]);
 
-  let kmh = speedMps == null ? lastSpeed : Math.round(speedMps * 3.6);
-  lastSpeed = kmh;
+  let kmh = speedMps==null?lastSpeed:Math.round(speedMps*3.6);
+  lastSpeed=kmh;
   speedDisplay.textContent = `${kmh} km/h`;
 
-  detectRadars(lat, lng);
-  detectAvgZones(lat, lng, kmh);
+  detectRadars(lat,lng);
+  detectAvgZones(lat,lng,kmh);
   drawPiP(kmh);
 }
 
@@ -106,10 +123,11 @@ function distanceMeters(aLat,aLng,bLat,bLng){
   return 2*R*Math.atan2(Math.sqrt(aa), Math.sqrt(1-aa));
 }
 
+// --- radar detection ---
 function detectRadars(lat,lng){
-  const now = Date.now();
+  const now=Date.now();
   radars.forEach(r=>{
-    const d = distanceMeters(lat,lng,r.lat,r.lng);
+    const d=distanceMeters(lat,lng,r.lat,r.lng);
     if(d<500 && now-lastAlertTime>5000){
       showAlert(`${r.label||'Radar'} — ${Math.round(d)} m`);
       lastAlertTime=now;
@@ -120,13 +138,13 @@ function detectRadars(lat,lng){
 function showAlert(text){
   alertText.textContent=text;
   alertPopup.classList.remove('hidden');
-
   if(chime){ chime.currentTime=0; chime.play().catch(()=>{}); }
 
   clearTimeout(alertPopup._timeout);
-  alertPopup._timeout = setTimeout(()=>{ alertPopup.classList.add('hidden'); }, 4000);
+  alertPopup._timeout = setTimeout(()=>{ alertPopup.classList.add('hidden'); },4000);
 }
 
+// --- average zones ---
 function detectAvgZones(lat,lng,kmh){
   let found=null;
   for(let z of avgZones){
@@ -145,7 +163,7 @@ function showAvgZone(zone,pct,kmh){
   avgZoneBar.classList.remove('hidden');
   avgSpeedVal.textContent=kmh;
   zoneLimitVal.textContent=zone.limit;
-  const percent = Math.round(Math.min(1,Math.max(0,pct))*100);
+  const percent=Math.round(Math.min(1,Math.max(0,pct))*100);
   progressFill.style.width=percent+'%';
   carMarker.style.left=percent+'%';
 
@@ -162,20 +180,21 @@ function showAvgZone(zone,pct,kmh){
 
 function hideAvgZone(){ avgZoneBar.classList.add('hidden'); }
 
+// --- PiP ---
 function setupPiPButton(){
-  if(isMobile()){
+  pipToggle.style.zIndex=9999;
+  if(/Mobi|Android/i.test(navigator.userAgent)){
     pipToggle.style.display='none';
     const overlay=document.createElement('div');
     overlay.id='mobileOverlay';
     Object.assign(overlay.style,{
       position:'fixed',bottom:'20px',right:'20px',padding:'12px 18px',
-      background:'#122033',color:'#fff',borderRadius:'16px',fontSize:'18px',zIndex:9999
+      background:'#122033',color:'#fff',borderRadius:'16px',fontSize:'20px',zIndex:9999
     });
     document.body.appendChild(overlay);
-    setInterval(()=>{ overlay.textContent=alertText.textContent || `${lastSpeed} km/h`; },200);
+    setInterval(()=>{ overlay.textContent=alertText.textContent||`${lastSpeed} km/h`; },200);
     return;
   }
-
   pipToggle.addEventListener('click',async ()=>{
     if(!document.pictureInPictureEnabled){ alert('PiP not supported'); return; }
     try{
@@ -184,7 +203,6 @@ function setupPiPButton(){
       else { await pipVideo.requestPictureInPicture(); pipToggle.textContent='Disable PiP'; pipEnabled=true; }
     }catch(err){ console.error('PiP error',err); }
   });
-
   document.addEventListener('leavepictureinpicture',()=>{ pipEnabled=false; pipToggle.textContent='Enable PiP'; });
   document.addEventListener('enterpictureinpicture',()=>{ pipEnabled=true; pipToggle.textContent='Disable PiP'; });
 }
@@ -203,26 +221,22 @@ function renderPipFrame(kmh){
 
   if(!alertPopup.classList.contains('hidden')){
     roundRect(ctx,10,10,w-20,h-20,18,'#122033');
-    ctx.font='22px Inter, Arial'; ctx.fillStyle='#ffd7d7'; ctx.fillText('🚨',28,58);
-    ctx.font='18px Inter, Arial'; ctx.fillStyle='#fff';
-    wrapText(ctx,alertText.textContent||'Alert',70,48,w-100,22);
+    ctx.font='26px Inter, Arial'; ctx.fillStyle='#ffd7d7'; ctx.fillText('🚨',30,60);
+    ctx.font='20px Inter, Arial'; ctx.fillStyle='#fff';
+    wrapText(ctx,alertText.textContent||'Alert',80,60,w-120,26);
   } else {
-    roundRect(ctx,20,50,w-40,h-100,14,'#0b2a33');
-    ctx.font='26px Inter, Arial'; ctx.fillStyle='#00e5ff';
-    ctx.fillText(`${kmh} km/h`,50,100);
+    roundRect(ctx,20,50,w-40,h-120,16,'#0b2a33');
+    ctx.font='28px Inter, Arial'; ctx.fillStyle='#00e5ff';
+    ctx.fillText(`${kmh} km/h`,50,110);
   }
 }
 
-function roundRect(ctx,x,y,width,height,radius,fillStyle){
+function roundRect(ctx,x,y,w,h,r,fillStyle){
   ctx.beginPath();
-  ctx.moveTo(x+radius,y); ctx.lineTo(x+width-radius,y);
-  ctx.quadraticCurveTo(x+width,y,x+width,y+radius);
-  ctx.lineTo(x+width,y+height-radius);
-  ctx.quadraticCurveTo(x+width,y+height,x+width-radius,y+height);
-  ctx.lineTo(x+radius,y+height);
-  ctx.quadraticCurveTo(x,y+height,x,y+height-radius);
-  ctx.lineTo(x,y+radius);
-  ctx.quadraticCurveTo(x,y,x+radius,y);
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y);
   ctx.closePath(); ctx.fillStyle=fillStyle; ctx.fill();
 }
 
@@ -237,4 +251,29 @@ function wrapText(ctx,text,x,y,maxWidth,lineHeight){
   ctx.fillText(line,x,y);
 }
 
+// --- Admin menu for testing ---
+function setupAdminMenu(){
+  adminMenu.style.position='absolute';
+  adminMenu.style.bottom='20px';
+  adminMenu.style.left='20px';
+  adminMenu.style.zIndex=9999;
+  adminMenu.style.display='flex';
+  adminMenu.style.gap='10px';
+  ['Radar Alert','Avg Zone Alert','Speed Display'].forEach((label)=>{
+    const btn=document.createElement('button');
+    btn.textContent=label;
+    btn.style.fontSize='16px';
+    btn.style.padding='8px 12px';
+    btn.addEventListener('click',()=>{ simulateAlert(label); });
+    adminMenu.appendChild(btn);
+  });
+}
+
+function simulateAlert(type){
+  if(type==='Radar Alert'){ showAlert('🚨 Test Radar'); }
+  if(type==='Avg Zone Alert'){ showAlert('💨 Test Avg Zone'); }
+  if(type==='Speed Display'){ showAlert(`${lastSpeed} km/h`); }
+}
+
+// --- start ---
 init();
