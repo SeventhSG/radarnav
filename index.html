@@ -2,38 +2,48 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>RadarNav Mobile</title>
-<link rel="stylesheet" href="style.css">
 <link rel="manifest" href="manifest.json">
-<link rel="icon" href="assets/icon.png">
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 </head>
 <body>
-
 <div id="map"></div>
 
-<div id="uiOverlay">
-  <div id="alertPopup"><span id="alertText">Alert</span></div>
-  <div id="avgZoneBar">
-    <div id="progressFill"></div>
-    <div id="carMarker"></div>
-    <span id="avgSpeedVal">0</span>/<span id="zoneLimitVal">0</span> km/h
-  </div>
-  <div id="speedDisplay">0 km/h</div>
-  <button id="pipToggle">Enable PiP</button>
-
-  <div id="adminMenu">
-    <button data-test="fixed">Test Fixed</button>
-    <button data-test="average">Test Average</button>
-    <button data-test="custom">Test Custom</button>
-  </div>
+<!-- Alerts & Avg speed UI -->
+<div id="alertPopup" class="hidden"><span id="alertText"></span></div>
+<div id="avgZoneBar" class="hidden">
+    <span id="avgSpeedVal">0</span> / <span id="zoneLimitVal">0</span> km/h
+    <div id="progressContainer"><div id="progressFill"></div><div id="carMarker"></div></div>
 </div>
 
-<video id="pipVideo" hidden></video>
-<canvas id="pipCanvas" width="320" height="180" hidden></canvas>
+<!-- PiP / speed overlay -->
+<canvas id="pipCanvas" width="300" height="150"></canvas>
+<video id="pipVideo" style="display:none;"></video>
+<button id="pipToggle">Enable PiP</button>
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<!-- Admin menu -->
+<div id="adminMenu">
+    <button id="testRadar">Test Radar Alert</button>
+    <button id="testAvg">Test Average Speed Alert</button>
+    <button id="closeAdmin">Close Admin</button>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/nosleep/0.12.0/NoSleep.min.js"></script>
 <script src="app.js"></script>
+<script>
+    // NoSleep to prevent mobile sleep
+    const noSleep = new NoSleep();
+    document.body.addEventListener('touchstart', () => noSleep.enable(), {once:true});
+
+    // Admin menu
+    const adminMenu = document.getElementById('adminMenu');
+    document.body.addEventListener('dblclick',()=>adminMenu.classList.toggle('visible'));
+    document.getElementById('testRadar').addEventListener('click',()=>showAlert('Radar ahead — 500 m'));
+    document.getElementById('testAvg').addEventListener('click',()=>showAlert('Average speed camera ahead — 800 m'));
+    document.getElementById('closeAdmin').addEventListener('click',()=>adminMenu.classList.remove('visible'));
+</script>
 </body>
 </html>
