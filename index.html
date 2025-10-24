@@ -2,31 +2,49 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RadarNav Prototype</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>RadarNav</title>
   <link rel="stylesheet" href="style.css">
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-sA+e2e3H64hC2F5Zr3ktHe52d5V3yhO/ClkFQtXJ6v4="
+        crossorigin=""/>
 </head>
 <body>
+
   <div id="map"></div>
 
-  <!-- Overlay UI -->
-  <div id="overlayUI">
-    <div id="alertPopup" class="hidden"><span id="alertText">Alert</span></div>
-    <div id="avgZoneBar" class="hidden">
-      <span id="avgSpeedVal">0</span> / <span id="zoneLimitVal">0</span>
-      <div id="progressBar"><div id="progressFill"></div><div id="carMarker"></div></div>
+  <!-- Alerts -->
+  <div id="alertPopup" class="hidden"><span id="alertText"></span></div>
+  <div id="errorPopup" class="hidden"></div>
+
+  <!-- Average zone bar -->
+  <div id="avgZoneBar" class="hidden">
+    <div id="progressFill"></div>
+    <div id="carMarker"></div>
+    <div class="speedInfo">
+      <span id="avgSpeedVal">0</span> km/h / Limit: <span id="zoneLimitVal">0</span>
     </div>
-    <div id="speedDisplay">0 km/h</div>
-    <div id="adminMenu"></div>
   </div>
 
-  <!-- Hidden video for PiP if needed -->
-  <video id="pipVideo" style="display:none;"></video>
-  <canvas id="pipCanvas" width="320" height="180" style="display:none;"></canvas>
+  <!-- Speed display -->
+  <div id="speedDisplay">0 km/h</div>
 
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <!-- PiP -->
+  <canvas id="pipCanvas" width="320" height="180"></canvas>
+  <video id="pipVideo" style="display:none;"></video>
+  <button id="pipToggle">Enable PiP</button>
+
+  <!-- Admin menu -->
+  <div id="adminMenu" class="collapsed">
+    <button class="admin-btn" data-test="Test1">Test Alert 1</button>
+    <button class="admin-btn" data-test="Test2">Test Alert 2</button>
+    <button class="admin-btn" data-test="Test3">Test Alert 3</button>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-o9N1j8Y8gIpF1TfMj+xI4V7t6v+9F+QfA6k0gXb/t7M="
+          crossorigin=""></script>
   <script src="app.js"></script>
 </body>
 </html>
