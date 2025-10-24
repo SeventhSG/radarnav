@@ -22,7 +22,32 @@ const progressFill = document.getElementById('progressFill');
 const carMarker = document.getElementById('carMarker');
 const speedDisplay = document.getElementById('speedDisplay');
 const pipToggle = document.getElementById('pipToggle');
+// --- ADD THIS NEAR THE TOP OF app.js ---
+const chime = new Audio('assets/chime.mp3'); // make sure your MP3 is in assets/
 
+// --- UPDATE showAlert function ---
+function showAlert(text){
+  alertText.textContent = text;
+  alertPopup.classList.remove('hidden');
+
+  // play chime (handle promise for modern browsers)
+  if (chime) {
+    chime.currentTime = 0;
+    const playPromise = chime.play();
+    if (playPromise && typeof playPromise.then === 'function') {
+      playPromise.catch(e => {
+        // autoplay restrictions — ignore if triggered without user gesture
+        console.warn('Chime play prevented:', e);
+      });
+    }
+  }
+
+  // automatically hide after 4s (unless new alert arrives)
+  clearTimeout(alertPopup._timeout);
+  alertPopup._timeout = setTimeout(()=> {
+    alertPopup.classList.add('hidden');
+  }, 4000);
+}
 async function init() {
   loadData();
   initMap();
