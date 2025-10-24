@@ -21,27 +21,36 @@ async function init(){
 
 async function loadData(){
   try{
-    const res=await fetch('SCDB_SpeedCams.json');
-    const data=await res.json();
-    radars=data.cameras||data;
+    const res = await fetch('SCDB_SpeedCams.json');
+    const data = await res.json();
+    radars = data.map(cam => ({
+      lat: cam.lat,
+      lon: cam.lon,
+      flg: cam.flg,
+      unt: cam.unt
+    }));
     console.log(`Loaded ${radars.length} cameras`);
-    const z=await fetch('avg_zones.json');
-    avgZones=await z.json();
-  }catch(err){console.error('Load error',err);}
+    
+    const z = await fetch('avg_zones.json');
+    avgZones = await z.json();
+  } catch(err){ console.error('Failed to load SCDB', err);}
 }
 
 function initMap(){
-  map=L.map('map').setView([39.0, 38.0],6);
+  map = L.map('map').setView([39.0, 38.0], 6);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
     attribution:'&copy; OpenStreetMap contributors'
   }).addTo(map);
 
-  userMarker=L.circleMarker([0,0],{radius:10,color:'#00e5ff',fillColor:'#00a3b7',fillOpacity:1}).addTo(map);
+  userMarker = L.circleMarker([0,0], {radius:10, color:'#00e5ff', fillColor:'#00a3b7', fillOpacity:1}).addTo(map);
 
-  radars.forEach(r=>{
-    const color=r.type==='average'?'#88f':'#ffcc00';
-    const circle=L.circle([r.lat,r.lng],{radius:14,color,weight:3}).addTo(map);
-    circle.bindPopup(`${r.label||'Radar'} ${r.speedLimit?' - '+r.speedLimit+' km/h':''}`);
+  radars.forEach(r => {
+    // Use lon instead of lng
+    const lat = r.lat, lng = r.lon;
+    let color = '#ffcc00'; // default fixed
+    if(r.flg === 3) color = '#88f'; // average
+    const circle = L.circle([lat,lng], {radius:14, color, weight:3}).addTo(map);
+    circle.bindPopup(`Radar - ${r.flg ? r.flg + ' ' + r.unt : ''}`);
   });
 
   avgZones.forEach(z=>{
