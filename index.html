@@ -2,73 +2,39 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RadarNav Mobile</title>
 <link rel="stylesheet" href="style.css">
-<link rel="manifest" href="manifest.json">
-<!-- Leaflet CSS -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
- integrity="sha256-sA+e2X2cQkJ3Oa5vLa5eYzQO9Qq8sFPeI8v+gEi3uNk=" crossorigin=""/>
 </head>
 <body>
-
-<!-- Map container -->
 <div id="map"></div>
 
-<!-- Center alert popup -->
-<div id="alertPopup" class="overlay-ui"></div>
-
-<!-- Average speed bar -->
-<div id="avgZoneBar" class="overlay-ui">
-  <div id="progressFill"></div>
-  <div id="carMarker"></div>
-  <div style="position:absolute; right:10px; top:5px; color:#fff;">
-    <span id="avgSpeedVal">0</span> / <span id="zoneLimitVal">0</span> km/h
-  </div>
+<!-- Overlay UI -->
+<div id="uiOverlay">
+    <div id="speedDisplay">0 km/h</div>
+    <div id="alertPopup" class="hidden"><span id="alertText">Alert!</span></div>
+    <div id="avgZoneBar" class="hidden">
+        <span id="avgSpeedVal"></span> / <span id="zoneLimitVal"></span> km/h
+        <div id="progressContainer">
+            <div id="progressFill"></div>
+            <div id="carMarker"></div>
+        </div>
+    </div>
+    <button id="pipToggle">Enable PiP</button>
 </div>
 
-<!-- Speed display (when PiP off) -->
-<div id="speedDisplay" class="overlay-ui">0 km/h</div>
+<video id="pipVideo" autoplay muted playsinline></video>
+<canvas id="pipCanvas" width="320" height="180"></canvas>
 
-<!-- PiP canvas -->
-<canvas id="pipCanvas"></canvas>
-<video id="pipVideo" style="display:none;"></video>
-
-<!-- PiP toggle button -->
-<div id="pipToggle" class="overlay-ui">Enable PiP</div>
-
-<!-- Admin menu -->
-<div id="adminMenu" class="overlay-ui collapsed">
-  <button id="testRadarBtn">Test Radar Alert</button>
-  <button id="testAvgBtn">Test Avg Speed Alert</button>
-  <button id="toggleAdminBtn">Collapse/Expand</button>
+<!-- Admin taps -->
+<div id="adminMenu">
+    <button id="testAlert">Test Alert</button>
+    <button id="testSpeed">Test Speed</button>
+    <button id="testZone">Test Avg Zone</button>
 </div>
 
-<!-- Scripts -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
- integrity="sha256-o9N1j0y5mBExA/xkF9mG7H2fY9z7FlZ+4/5pGiFhUtk=" crossorigin=""></script>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script src="nosleep.js"></script>
 <script src="app.js"></script>
-
-<script>
-  // Admin menu toggle
-  const adminMenu = document.getElementById('adminMenu');
-  document.getElementById('toggleAdminBtn').addEventListener('click', () => {
-    adminMenu.classList.toggle('collapsed');
-  });
-
-  // Test buttons
-  document.getElementById('testRadarBtn').addEventListener('click', () => {
-    alertPopup.textContent = '🚨 Radar Ahead! 500 m';
-    alertPopup.classList.add('active');
-    setTimeout(() => alertPopup.classList.remove('active'), 3000);
-  });
-  document.getElementById('testAvgBtn').addEventListener('click', () => {
-    alertPopup.textContent = '⚡ Average Speed Zone!';
-    alertPopup.classList.add('active');
-    setTimeout(() => alertPopup.classList.remove('active'), 3000);
-  });
-</script>
-
 </body>
 </html>
