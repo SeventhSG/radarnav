@@ -1,140 +1,107 @@
-:root{
-  --bg: #0f1724;
-  --card: rgba(255,255,255,0.06);
-  --accent: #00e5ff;
-  --danger: #ff4d4f;
-  --glass: rgba(255,255,255,0.06);
-  --text: #e6eef8;
+html, body, #map {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
-html,body,#app{
-  height:100%;
-  margin:0;
-  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-  background: var(--bg);
-  color: var(--text);
-}
-
-#map {
+#overlayUI {
   position: absolute;
-  inset: 0;
-  z-index: 0;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 9999;
+  pointer-events: none;
+  font-family: Arial, sans-serif;
 }
 
-/* Topbar */
-#topbar{
-  position: absolute;
-  top:12px;
-  left:12px;
-  right:12px;
-  z-index: 40;
-  display:flex;
-  justify-content:space-between;
-  gap:12px;
-}
-
-#speedDisplay{
-  background: var(--card);
-  padding:8px 12px;
-  border-radius:12px;
-  font-weight:600;
-  box-shadow: 0 6px 18px rgba(2,6,23,0.6);
-}
-
-#pipToggle{
-  background: var(--glass);
-  border: none;
-  color:var(--text);
-  padding:8px 12px;
-  border-radius:12px;
-  cursor:pointer;
-  box-shadow: 0 6px 18px rgba(2,6,23,0.6);
-}
-
-/* Popup */
-#alertPopup{
-  position: absolute;
-  left:50%;
-  transform: translateX(-50%) translateY(20px);
-  bottom: 110px;
-  z-index: 45;
-  min-width:250px;
-  max-width:90%;
-  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
-  border-radius:16px;
-  padding:12px 16px;
-  display:flex;
-  gap:12px;
-  align-items:center;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-  transition: transform 300ms cubic-bezier(.2,.9,.3,1), opacity 220ms;
-  opacity:1;
-  backdrop-filter: blur(6px);
-}
-
-#alertPopup.hidden{
-  opacity:0;
-  pointer-events:none;
-  transform: translateX(-50%) translateY(40px);
-}
-
-#alertIcon{ font-size:22px; }
-#alertText{ font-weight:700; font-size:16px; }
-
-/* avg zone bar */
-#avgZoneBar{
-  position: absolute;
-  left:12px;
-  right:12px;
-  bottom:12px;
-  z-index:45;
-  border-radius:14px;
-  padding:10px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
-  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-  transition: transform 300ms, opacity 200ms;
-}
-
-#avgZoneBar.hidden{ opacity:0; transform: translateY(10px); pointer-events:none; }
-
-#avgSpeeds{
-  display:flex;
-  justify-content:space-between;
-  font-weight:600;
-  margin-bottom:8px;
-}
-
-#progressWrap{ width:100%; }
-
-#progressLine{
-  position:relative;
-  height:14px;
-  border-radius:12px;
-  background: rgba(255,255,255,0.06);
-  overflow:hidden;
-}
-
-#progressFill{
-  position:absolute;
-  left:0;
-  top:0;
-  bottom:0;
-  width:0%;
-  background: linear-gradient(90deg, rgba(0,229,255,0.2), rgba(0,229,255,0.6));
-  transition: width 300ms linear, background 300ms;
-}
-
-#carMarker{
-  position:absolute;
-  top:-12px;
-  left:0%;
+/* Alerts */
+#alertPopup {
+  position: fixed;
+  top: 20px;
+  left: 50%;
   transform: translateX(-50%);
-  transition: left 300ms linear;
-  font-size:20px;
+  background: rgba(18,32,51,0.9);
+  color: #ffd7d7;
+  padding: 15px 25px;
+  border-radius: 16px;
+  font-size: 22px;
+  pointer-events: auto;
 }
 
-/* small responsive tweaks */
-@media (max-width:520px){
-  #alertPopup { bottom:140px; padding:10px; }
-  #pipToggle { padding:6px 10px; }
+.hidden { display: none; }
+
+/* Avg zone */
+#avgZoneBar {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80%;
+  background: rgba(7,16,33,0.7);
+  padding: 8px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 20px;
+  pointer-events: auto;
+}
+
+#progressBar {
+  flex: 1;
+  height: 20px;
+  background: #0b2a33;
+  border-radius: 10px;
+  margin-left: 10px;
+  position: relative;
+}
+
+#progressFill {
+  height: 100%;
+  width: 0%;
+  border-radius: 10px;
+}
+
+#carMarker {
+  position: absolute;
+  top: -5px;
+  width: 10px;
+  height: 30px;
+  background: red;
+  border-radius: 5px;
+}
+
+/* Speed display */
+#speedDisplay {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 32px;
+  background: rgba(7,16,33,0.9);
+  color: #00e5ff;
+  padding: 10px 18px;
+  border-radius: 16px;
+  pointer-events: auto;
+}
+
+/* Admin menu */
+#adminMenu {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  gap: 10px;
+  pointer-events: auto;
+}
+
+#adminMenu button {
+  padding: 8px 12px;
+  font-size: 16px;
+  border-radius: 12px;
+  border: none;
+  background: #122033;
+  color: #fff;
+  cursor: pointer;
 }
