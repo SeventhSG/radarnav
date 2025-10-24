@@ -1,208 +1,112 @@
-let map, userMarker, radars = [], avgZones = [];
-let userLat = 0, userLon = 0, userSpeed = 0, userHeading = 0;
-let alertActive = false, pipActive = false;
-let noSleep = new NoSleep();
+// app.full.js - RadarNav single-file (final)
+// Requires: Leaflet loaded in page, NoSleep.js optional (recommended)
 
-const alertPopup = document.getElementById("alertPopup");
-const alertText = document.getElementById("alertText");
-const errorBox = document.getElementById("errorBox");
-const pipCanvas = document.getElementById("pipCanvas");
-const pipVideo = document.getElementById("pipVideo");
-const pipToggle = document.getElementById("pipToggle");
-const ctx = pipCanvas.getContext("2d");
+// -------------------- Config --------------------
+const CAMERA_RADIUS_KM = 10;     // show cameras within 10 km
+const ALERT_RADIUS_KM = 1.0;     // alert when within 1 km
+const AHEAD_ANGLE_DEG = 50;      // ± deg considered "ahead"
+const VISUAL_THROTTLE_MS = 600;  // throttle heavy UI updates
+const MAX_MARKERS = 250;         // keep nearest N markers for perf
 
-function showError(msg) {
+// -------------------- Globals / UI refs --------------------
+let map = null;
+let userMarker = null;
+let radars = [];         // loaded radar objects
+let avgZones = [];       // average speed zones
+let watchId = null;
+
+let userLat = null;
+let userLon = null;
+let userSpeed = 0;       // km/h
+let userHeading = null;  // degrees
+let lastPos = null;      // previous {lat, lon, t}
+
+let lastVisualUpdate = 0;
+let lastAlertTime = 0;
+
+const alertPopup = document.getElementById('alertPopup');
+const alertText = document.getElementById('alertText');
+const avgZoneBar = document.getElementById('avgZoneBar');
+const avgSpeedVal = document.getElementById('avgSpeedVal');
+const zoneLimitVal = document.getElementById('zoneLimitVal');
+const progressFill = document.getElementById('progressFill');
+const carMarker = document.getElementById('carMarker');
+const pipCanvas = document.getElementById('pipCanvas');
+const pipVideo = document.getElementById('pipVideo');
+const pipToggle = document.getElementById('pipToggle');
+const errorBox = document.getElementById('errorBox');
+const adminMenu = document.getElementById('adminMenu');
+const btnRadar = document.getElementById('testRadar');
+const btnAvgZone = document.getElementById('testAvgZone');
+const btnClear = document.getElementById('testClear');
+
+const pipCtx = pipCanvas ? pipCanvas.getContext('2d') : null;
+const chime = new Audio('assets/chime.mp3'); // ensure this exists or remove
+
+// NoSleep
+let noSleep = (typeof NoSleep !== 'undefined') ? new NoSleep() : null;
+
+// Marker pooling
+const markerPool = [];
+const activeMarkers = new Map(); // key -> {marker, idx}
+
+// -------------------- Utilities --------------------
+function showError(msg, duration = 4000) {
+  if (!errorBox) return console.warn(msg);
   errorBox.textContent = msg;
-  errorBox.classList.remove("hidden");
-  setTimeout(() => errorBox.classList.add("hidden"), 4000);
+  errorBox.classList.remove('hidden');
+  setTimeout(()=> errorBox.classList.add('hidden'), duration);
 }
 
-async function loadData() {
-  try {
-    const res = await fetch("SCDB_SpeedCams.json");
-    const data = await res.json();
-    radars = data.map(cam => ({
-      lat: cam.lat,
-      lon: cam.lon,
-      flg: cam.flg,
-      unt: cam.unt
-    }));
-    console.log(`Loaded ${radars.length} cameras`);
-  } catch (err) {
-    console.error(err);
-    showError("Failed to load radar data.");
-  }
-
-  try {
-    const z = await fetch("avg_zones.json");
-    avgZones = await z.json();
-  } catch {
-    console.warn("No avg_zones.json found — skipping.");
-  }
+function showAlert(text) {
+  if (!alertPopup || !alertText) return console.log('ALERT:', text);
+  alertText.textContent = text;
+  alertPopup.classList.remove('hidden');
+  // play chime
+  if (chime) { chime.currentTime = 0; chime.play().catch(()=>{}); }
+  setTimeout(()=> alertPopup.classList.add('hidden'), 4000);
 }
 
-function initMap() {
-  map = L.map("map", {
-    zoomControl: false,
-    attributionControl: false
-  }).setView([0, 0], 14);
-
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19
-  }).addTo(map);
-}
-
+// haversine distance in km
 function distance(lat1, lon1, lat2, lon2) {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) *
-    Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) *
-    Math.sin(dLon / 2);
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return Infinity;
+  const R = 6371; // km
+  const toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
 }
 
-function updateSpeedDisplay() {
-  ctx.clearRect(0, 0, pipCanvas.width, pipCanvas.height);
-  ctx.fillStyle = "#000";
-  ctx.fillRect(0, 0, pipCanvas.width, pipCanvas.height);
-  ctx.fillStyle = "#0f0";
-  ctx.font = "bold 40px Arial";
-  ctx.textAlign = "center";
-  ctx.fillText(`${Math.round(userSpeed)} km/h`, 100, 70);
-}
-
-function updateUserMarker(lat, lon) {
-  if (!userMarker) {
-    userMarker = L.marker([lat, lon], {
-      icon: L.icon({
-        iconUrl: "car-icon.png",
-        iconSize: [40, 40],
-        iconAnchor: [20, 20]
-      })
-    }).addTo(map);
-  } else {
-    userMarker.setLatLng([lat, lon]);
-  }
-  map.setView([lat, lon]);
-}
-
-function updateVisibleRadars() {
-  map.eachLayer(layer => {
-    if (layer.options && layer.options.icon && layer !== userMarker) {
-      map.removeLayer(layer);
-    }
-  });
-
-  radars.forEach(radar => {
-    const dist = distance(userLat, userLon, radar.lat, radar.lon);
-    if (dist <= 10) {
-      const marker = L.circleMarker([radar.lat, radar.lon], {
-        radius: 6,
-        color: radar.flg === 2 ? "red" : "orange",
-        fillColor: "red",
-        fillOpacity: 0.9
-      }).addTo(map);
-    }
-  });
-}
-
-function handleRadarAlerts() {
-  let nearest = null, minDist = Infinity;
-  radars.forEach(radar => {
-    const dist = distance(userLat, userLon, radar.lat, radar.lon);
-    if (dist < minDist) {
-      minDist = dist;
-      nearest = radar;
-    }
-  });
-
-  if (nearest && minDist <= 1 && !alertActive) {
-    alertActive = true;
-    alertText.textContent = `⚠️ Radar ahead in ${Math.round(minDist * 1000)} m!`;
-    alertPopup.classList.remove("hidden");
-    setTimeout(() => {
-      alertPopup.classList.add("hidden");
-      alertActive = false;
-    }, 4000);
-  }
-}
-
-function startPiP() {
-  if (pipActive) return;
-  const stream = pipCanvas.captureStream(30);
-  pipVideo.srcObject = stream;
-  pipVideo.play();
-  pipVideo.requestPictureInPicture().then(() => {
-    pipActive = true;
-  }).catch(err => {
-    console.error("PiP failed:", err);
-    showError("PiP not supported.");
-  });
-}
-
-function enableNoSleep() {
-  document.addEventListener("click", () => {
-    noSleep.enable();
-  }, { once: true });
-}
-
-async function init() {
-  initMap();
-  await loadData();
-  enableNoSleep();
-
-  if (!navigator.geolocation) {
-    showError("Geolocation not supported.");
-    return;
-  }
-
-  navigator.geolocation.watchPosition(pos => {
-    userLat = pos.coords.latitude;
-    userLon = pos.coords.longitude;
-    userSpeed = pos.coords.speed ? pos.coords.speed * 3.6 : 0;
-    updateUserMarker(userLat, userLon);
-    updateVisibleRadars();
-    handleRadarAlerts();
-    updateSpeedDisplay();
-  }, err => {
-    showError("Location error: " + err.message);
-  }, { enableHighAccuracy: true, maximumAge: 1000 });
-}
-
-pipToggle.addEventListener("click", startPiP);
-init();
-/***********************
- * app.js - CHUNK 2
- ***********************/
-
-/* ---------- Helpers ---------- */
-
-// compute bearing from (lat1,lon1) to (lat2,lon2) in degrees 0..360
-function getBearing(lat1, lon1, lat2, lon2) {
+// bearing from p1 -> p2 in degrees 0..360
+function bearingDeg(lat1, lon1, lat2, lon2) {
   const toRad = d => d * Math.PI / 180;
   const toDeg = r => r * 180 / Math.PI;
   const φ1 = toRad(lat1), φ2 = toRad(lat2);
   const Δλ = toRad(lon2 - lon1);
   const y = Math.sin(Δλ) * Math.cos(φ2);
   const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
-  return (toDeg(Math.atan2(y, x)) + 360) % 360;
+  return (toDeg(Math.atan2(y,x)) + 360) % 360;
 }
 
-// shortest absolute difference between bearings (0..180)
-function bearingDiff(a, b) {
+function angleDiffAbs(a,b) {
   let d = Math.abs(a - b) % 360;
   if (d > 180) d = 360 - d;
   return d;
 }
 
-// throttle helper: run fn at most every wait ms
+function deriveHeading(prev, curr) {
+  if (!prev) return null;
+  return bearingDeg(prev.lat, prev.lon, curr.lat, curr.lon);
+}
+
+// throttle
 function throttle(fn, wait) {
   let last = 0;
-  return function (...args) {
+  return function(...args) {
     const now = Date.now();
     if (now - last >= wait) {
       last = now;
@@ -211,293 +115,431 @@ function throttle(fn, wait) {
   };
 }
 
-// debounce helper
-function debounce(fn, wait) {
-  let t;
-  return function (...args) {
-    clearTimeout(t);
-    t = setTimeout(() => fn.apply(this, args), wait);
-  };
-}
-
-/* ---------- Marker pool / performance ---------- */
-
-const markerPool = [];
-const activeMarkers = new Map(); // radarIndex -> marker
-
-function getMarkerFromPool() {
+// -------------------- Marker pool --------------------
+function getMarker() {
   if (markerPool.length) return markerPool.pop();
-  return L.circleMarker([0,0], { radius: 6, weight: 2, fillOpacity: 0.9 });
+  return L.circleMarker([0,0], { radius:6, weight:1, fillOpacity:0.9, interactive:false });
+}
+function releaseMarker(m) {
+  try { map.removeLayer(m); } catch(e){}
+  markerPool.push(m);
 }
 
-function releaseMarker(marker) {
+// -------------------- Data loading (robust for SCDB) --------------------
+async function loadData() {
   try {
-    map.removeLayer(marker);
-  } catch (e) {}
-  markerPool.push(marker);
-}
-
-/* ---------- Heading-aware filtering & approaching logic ---------- */
-
-// returns true if radar is "ahead" within +/- allowedDeg of heading
-function isAheadOfUser(radar, heading, allowedDeg = 50) {
-  if (heading == null || isNaN(heading)) return true; // if no heading, be permissive
-  const brng = getBearing(userLat, userLon, radar.lat, radar.lon);
-  const diff = bearingDiff(brng, heading);
-  return diff <= allowedDeg;
-}
-
-// Called (throttled) whenever location updates; decides marker display and alerts
-const onPositionThrottled = throttle(function () {
-  if (!map || !currentPos) return;
-
-  // 1) update visible markers within 10km
-  const maxKm = 10;
-  const visible = [];
-  for (let i = 0; i < radars.length; i++) {
-    const r = radars[i];
-    const dKm = distance(userLat, userLon, r.lat, r.lon); // in km
-    if (dKm <= maxKm) visible.push({ r, idx: i, dKm });
+    const res = await fetch('SCDB_SpeedCams.json');
+    const text = await res.text();
+    // SCDB sometimes delivers concatenated JSON objects. Extract objects that contain "lat"
+    const re = /\{[^}]*"lat"[^}]*\}/g;
+    const matches = text.match(re);
+    if (matches && matches.length) {
+      radars = matches.map(s => {
+        try { const o = JSON.parse(s); return o; } catch(e) { return null; }
+      }).filter(Boolean);
+    } else {
+      // maybe valid JSON array
+      try { radars = await JSON.parse(text); } catch(e) { radars = []; }
+    }
+    console.log('Loaded radars:', radars.length);
+  } catch (err) {
+    console.error('Failed loading SCDB_SpeedCams.json', err);
+    showError('Failed to load radars JSON');
+    radars = [];
   }
 
-  // limit number of markers for performance (keep nearest 250)
-  visible.sort((a, b) => a.dKm - b.dKm);
-  const toShow = visible.slice(0, 250);
+  try {
+    const res2 = await fetch('avg_zones.json');
+    avgZones = await res2.json();
+    console.log('avgZones:', (avgZones||[]).length);
+  } catch(e) {
+    console.warn('avg_zones.json not loaded or missing');
+    avgZones = [];
+  }
+}
 
-  // release markers that are no longer in toShow
-  const keepSet = new Set(toShow.map(x => x.idx));
-  for (let [idx, marker] of activeMarkers.entries()) {
-    if (!keepSet.has(idx)) {
-      activeMarkers.delete(idx);
+// -------------------- Map init --------------------
+function initMap() {
+  if (map) return;
+  map = L.map('map', { zoomControl: true }).setView([39.9334, 32.8597], 13); // Turkey center fallback
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
+}
+
+// user marker
+function updateUserMarker(lat, lon) {
+  if (!userMarker) {
+    try {
+      userMarker = L.marker([lat, lon], {
+        icon: L.icon({ iconUrl: 'car-icon.png', iconSize:[36,36], iconAnchor:[18,18] })
+      }).addTo(map);
+    } catch(e) {
+      userMarker = L.circleMarker([lat,lon], { radius:8, color:'#00e5ff', fillColor:'#00a3b7', fillOpacity:1 }).addTo(map);
+    }
+  } else {
+    userMarker.setLatLng([lat, lon]);
+  }
+}
+
+// -------------------- Nearby marker update (throttled) --------------------
+function updateNearbyMarkers(userLat, userLon) {
+  // build list of radars within CAMERA_RADIUS_KM
+  const nearby = [];
+  for (let i=0;i<radars.length;i++){
+    const r = radars[i];
+    if (!r || r.lat==null || r.lon==null) continue;
+    const dKm = distance(userLat, userLon, r.lat, r.lon);
+    if (dKm <= CAMERA_RADIUS_KM) nearby.push({r, idx:i, dKm});
+  }
+  // sort by distance and keep nearest MAX_MARKERS
+  nearby.sort((a,b)=>a.dKm - b.dKm);
+  const keep = new Set();
+  const toShow = nearby.slice(0, MAX_MARKERS);
+  toShow.forEach(item => keep.add(item.idx));
+
+  // remove markers not in keep
+  for (const [idx, marker] of activeMarkers.entries()) {
+    if (!keep.has(idx)) {
       releaseMarker(marker);
+      activeMarkers.delete(idx);
     }
   }
 
-  // add/update markers for toShow
-  toShow.forEach(({ r, idx }) => {
-    let marker = activeMarkers.get(idx);
-    if (!marker) {
-      marker = getMarkerFromPool();
-      marker.setStyle({
-        color: r.flg === 2 ? '#ff3333' : '#ffcc00',
-        fillColor: r.flg === 2 ? '#ff6666' : '#ffd966',
-        radius: 7
-      });
-      marker.options.cameraMarker = true;
+  // add/update markers for keep
+  toShow.forEach(item => {
+    const { r, idx } = item;
+    if (!activeMarkers.has(idx)) {
+      const marker = getMarker();
+      const color = (r.flg === 2) ? '#ff3333' : '#ffcc00';
+      marker.setStyle({ color, fillColor: color, radius:6 });
       marker.addTo(map);
       activeMarkers.set(idx, marker);
     }
+    // set position
+    const marker = activeMarkers.get(idx);
     marker.setLatLng([r.lat, r.lon]);
   });
-
-  // 2) detect nearest approaching radar (within 1km AND ahead of heading)
-  const alertRadiusKm = 1.0; // 1 km
-  let nearest = null;
-  for (let v of toShow) {
-    const r = v.r;
-    const dKm = v.dKm;
-    if (dKm <= alertRadiusKm) {
-      // check heading/direction: only alert if radar is ahead of movement
-      const heading = currentPos && currentPos.heading != null ? currentPos.heading : null;
-      if (isAheadOfUser(r, heading, 50)) {
-        if (!nearest || dKm < nearest.dKm) nearest = { r, dKm, idx: v.idx };
-      }
-    }
-  }
-
-  // throttle alerts: only allow once per 5s
-  const now = Date.now();
-  if (nearest && (!onPositionThrottled._lastAlert || now - onPositionThrottled._lastAlert > 5000)) {
-    // show alert in UI
-    showApproachingAlert(nearest.r, Math.round(nearest.dKm * 1000));
-    onPositionThrottled._lastAlert = now;
-  }
-
-  // 3) update avg-zone progress only if inside avg zone and approaching
-  updateAvgZoneIfAny();
-
-}, 600); // run at most ~ once every 600ms for smoother performance
-
-/* ---------- Alert / Avg-zone UI ---------- */
-
-function showApproachingAlert(radar, distMeters) {
-  // radar: object, distMeters: integer
-  alertText.textContent = `${radar.flg === 2 ? 'Average' : 'Fixed'} camera ahead — ${distMeters} m`;
-  alertPopup.classList.remove('hidden');
-
-  // chime
-  if (chime) {
-    try { chime.currentTime = 0; chime.play().catch(()=>{}); } catch(e){}
-  }
-
-  // hide after 4s
-  clearTimeout(showApproachingAlert._hideTO);
-  showApproachingAlert._hideTO = setTimeout(() => {
-    alertPopup.classList.add('hidden');
-  }, 4000);
 }
 
-function updateAvgZoneIfAny() {
-  if (!currentPos) { hideAvgZone(); return; }
+// -------------------- Approaching detection --------------------
+function isRadarAhead(radar, heading) {
+  // get bearing from user to radar
+  const br = bearingDeg(userLat, userLon, radar.lat, radar.lon);
+  if (heading != null && !isNaN(heading)) {
+    return angleDiffAbs(br, heading) <= AHEAD_ANGLE_DEG;
+  }
+  // fallback: use lastPos-derived heading if available
+  if (lastPos && lastPos.lat != null) {
+    const derived = deriveHeading(lastPos, { lat:userLat, lon:userLon });
+    if (derived != null) return angleDiffAbs(br, derived) <= AHEAD_ANGLE_DEG;
+  }
+  return true; // if no heading info at all, be permissive
+}
 
-  // find avg zone where user projects onto segment and is within 60m gap
-  for (let z of avgZones || []) {
+function findNearestRelevantRadar(distanceLimitKm = CAMERA_RADIUS_KM) {
+  let nearest = null;
+  let minKm = Infinity;
+  for (let r of radars) {
+    if (!r || r.lat==null || r.lon==null) continue;
+    const dKm = distance(userLat, userLon, r.lat, r.lon);
+    if (dKm > distanceLimitKm) continue;
+    if (!isRadarAhead(r, userHeading)) continue;
+    if (dKm < minKm) { minKm = dKm; nearest = { r, dKm }; }
+  }
+  return nearest;
+}
+
+function detectApproachingAndAlert() {
+  const now = Date.now();
+  const nearest = findNearestRelevantRadar(CAMERA_RADIUS_KM);
+  if (!nearest) return;
+  // if within alert radius and throttle ok
+  if (nearest.dKm <= ALERT_RADIUS_KM && (now - lastAlertTime > 5000)) {
+    // optional road-check: if avgZones exist, check if radar projects close to any zone segment
+    let onRoad = false;
+    if (avgZones && avgZones.length) {
+      for (const z of avgZones) {
+        if (!z || !z.start || !z.end) continue;
+        // compute projection approx using distance to segment via simple check:
+        // compute distances start->radar + radar->end and compare with start->end length
+        const total = distance(z.start.lat, z.start.lng, z.end.lat, z.end.lng) * 1000; // meters
+        const d1 = distance(z.start.lat, z.start.lng, nearest.r.lat, nearest.r.lon) * 1000;
+        const d2 = distance(nearest.r.lat, nearest.r.lon, z.end.lat, z.end.lng) * 1000;
+        const gap = Math.abs((d1 + d2) - total);
+        if (gap < 60) { onRoad = true; break; }
+      }
+    } else {
+      onRoad = true;
+    }
+
+    if (onRoad) {
+      lastAlertTime = now;
+      showAlert(`${nearest.r.flg === 2 ? 'Average' : 'Fixed'} camera ahead — ${Math.round(nearest.dKm * 1000)} m`);
+      // force pip to show alert frame on next render
+      renderPipFrame(userSpeed, true);
+    }
+  }
+}
+
+// -------------------- Average-speed zone detection --------------------
+function detectAndShowAvgZone() {
+  if (!avgZones || !avgZones.length) { hideAvgZone(); return; }
+  for (const z of avgZones) {
     if (!z || !z.start || !z.end) continue;
-    const total = distance(z.start.lat, z.start.lng, z.end.lat, z.end.lng) * 1000; // km->m
+    // approximate math: project user's position onto segment via distances
+    const totalM = distance(z.start.lat, z.start.lng, z.end.lat, z.end.lng) * 1000;
     const dStart = distance(z.start.lat, z.start.lng, userLat, userLon) * 1000;
     const dEnd = distance(z.end.lat, z.end.lng, userLat, userLon) * 1000;
-    const gap = Math.abs(dStart + dEnd - total);
-    if (gap < 60 && dStart <= total + 30) {
-      // inside zone - show progress
-      const pct = Math.min(1, Math.max(0, dStart / total));
-      // show only if zone is average type (assume zone.limit exists)
-      if (z.limit != null) {
-        showAvgZone(z, pct, Math.round(userSpeed));
-        return;
+    const gap = Math.abs((dStart + dEnd) - totalM);
+    if (gap < 60 && dStart <= totalM + 30) {
+      // inside / near segment
+      const pct = Math.min(1, Math.max(0, dStart / totalM));
+      avgZoneBar.classList.remove('hidden');
+      avgSpeedVal.textContent = Math.round(userSpeed);
+      zoneLimitVal.textContent = z.limit || '?';
+      const percent = Math.round(pct * 100);
+      progressFill.style.width = `${percent}%`;
+      carMarker.style.left = `${percent}%`;
+
+      // color ramp
+      const over = userSpeed - (z.limit || 0);
+      if (over <= 0) {
+        progressFill.style.background = 'linear-gradient(90deg, rgba(0,229,255,0.2), rgba(0,229,255,0.6))';
+      } else {
+        const r = Math.min(255, Math.round((over / (z.limit || 1)) * 255 * 1.4));
+        const g = Math.max(0, 200 - Math.round((over / (z.limit || 1)) * 200));
+        progressFill.style.background = `linear-gradient(90deg, rgba(${r},${g},60,0.25), rgba(${r},${g},60,0.7))`;
       }
+      return;
     }
   }
   hideAvgZone();
-}
-
-function showAvgZone(zone, pct, kmh) {
-  avgZoneBar.classList.remove('hidden');
-  avgSpeedVal.textContent = kmh;
-  zoneLimitVal.textContent = zone.limit || '?';
-
-  const percent = Math.round(pct * 100);
-  progressFill.style.width = `${percent}%`;
-  carMarker.style.left = `${percent}%`;
-
-  // color ramp
-  const over = kmh - (zone.limit || 0);
-  if (over <= 0) {
-    progressFill.style.background = 'linear-gradient(90deg, rgba(0,229,255,0.2), rgba(0,229,255,0.6))';
-  } else {
-    const r = Math.min(255, Math.round((over / (zone.limit || 1)) * 255 * 1.4));
-    const g = Math.max(0, 200 - Math.round((over / (zone.limit || 1)) * 200));
-    progressFill.style.background = `linear-gradient(90deg, rgba(${r},${g},60,0.25), rgba(${r},${g},60,0.7))`;
-  }
 }
 
 function hideAvgZone() {
   avgZoneBar.classList.add('hidden');
 }
 
-/* ---------- PiP logic update (show speed only until approaching) ---------- */
+// -------------------- PiP / Canvas rendering --------------------
+function renderPipFrame(speedKmh, alertFrame = false) {
+  if (!pipCanvas || !pipCtx) return;
+  const w = pipCanvas.width, h = pipCanvas.height;
+  pipCtx.clearRect(0, 0, w, h);
+  // background
+  pipCtx.fillStyle = '#071021';
+  pipCtx.fillRect(0, 0, w, h);
 
-function isApproachingCamera(lat, lon) {
-  if (!radars || !radars.length) return false;
-  const alertRadiusKm = 1.0;
-  for (let r of radars) {
-    const dKm = distance(userLat, userLon, r.lat, r.lon);
-    if (dKm <= alertRadiusKm) {
-      // require it to be roughly ahead too
-      const heading = currentPos && currentPos.heading != null ? currentPos.heading : null;
-      if (isAheadOfUser(r, heading, 50)) return true;
+  if (alertFrame) {
+    // alert card with speed
+    roundRect(pipCtx, 8, 8, w - 16, h - 16, 12, '#122033');
+    pipCtx.font = '18px Arial';
+    pipCtx.fillStyle = '#ffd7d7';
+    pipCtx.textAlign = 'left';
+    pipCtx.fillText('🚨 Approaching Camera', 28, 40);
+    pipCtx.font = '24px Arial';
+    pipCtx.fillStyle = '#00e5ff';
+    pipCtx.textAlign = 'center';
+    pipCtx.fillText(`${Math.round(speedKmh)} km/h`, w/2, h - 28);
+  } else {
+    // speed-only tile
+    roundRect(pipCtx, 16, 24, w - 32, h - 48, 10, '#0b2a33');
+    pipCtx.font = '36px Arial';
+    pipCtx.fillStyle = '#00e5ff';
+    pipCtx.textAlign = 'center';
+    pipCtx.fillText(`${Math.round(speedKmh)} km/h`, w/2, h/2 + 8);
+  }
+}
+
+// helper rounded rect and wrapText
+function roundRect(ctx, x, y, width, height, radius, fillStyle) {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + width - radius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+  ctx.lineTo(x + width, y + height - radius);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  ctx.lineTo(x + radius, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+  ctx.fillStyle = fillStyle;
+  ctx.fill();
+}
+function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+  const words = text.split(' ');
+  let line = '';
+  for (let n=0;n<words.length;n++){
+    const testLine = line + words[n] + ' ';
+    const metrics = ctx.measureText(testLine);
+    if (metrics.width > maxWidth && n > 0) {
+      ctx.fillText(line, x, y);
+      line = words[n] + ' ';
+      y += lineHeight;
+    } else {
+      line = testLine;
     }
   }
-  return false;
+  ctx.fillText(line, x, y);
 }
 
-// render PiP canvas: speed only or speed + alert depending on approaching
-function renderPip(kmh) {
-  const ctx = pipCtx;
-  const w = pipCanvas.width, h = pipCanvas.height;
-  ctx.clearRect(0, 0, w, h);
-  // background
-  ctx.fillStyle = '#071021';
-  ctx.fillRect(0, 0, w, h);
-
-  const approaching = isApproachingCamera(userLat, userLon);
-
-  if (approaching && !alertPopup.classList.contains('hidden')) {
-    // show alert + speed
-    roundRect(ctx, 10, 10, w - 20, h - 20, 12, '#122033');
-    ctx.font = '18px Arial';
-    ctx.fillStyle = '#ffd7d7';
-    ctx.fillText('🚨', 28, 40);
-    ctx.font = '14px Arial';
-    wrapText(ctx, alertText.textContent || 'Alert', 70, 28, w - 100, 18);
-    ctx.font = '26px Arial';
-    ctx.fillStyle = '#00e5ff';
-    ctx.fillText(`${Math.round(kmh)} km/h`, w / 2, h - 30);
-  } else {
-    // show speed only
-    roundRect(ctx, 20, 30, w - 40, h - 60, 10, '#0b2a33');
-    ctx.font = '32px Arial';
-    ctx.fillStyle = '#00e5ff';
-    ctx.textAlign = 'center';
-    ctx.fillText(`${Math.round(kmh)} km/h`, w / 2, h / 2 + 8);
-    ctx.textAlign = 'start';
-  }
-}
-
-// continuously update pip canvas at reasonable frequency
-let pipRAF = null;
+// pip loop (animationFrame)
+let pipLoopId = null;
 function startPipLoop() {
-  if (pipRAF) return;
+  if (pipLoopId) return;
   function loop() {
-    renderPip(userSpeed || 0);
-    pipRAF = requestAnimationFrame(loop);
+    const approaching = isApproachingCameraFast();
+    renderPipFrame(userSpeed || 0, approaching);
+    pipLoopId = requestAnimationFrame(loop);
   }
   loop();
 }
 
-/* ---------- Admin menu: triple-tap to open ---------- */
-
-let tapCount = 0, tapTimer = null;
-document.addEventListener('touchend', () => {
-  tapCount += 1;
-  if (tapCount === 3) {
-    document.getElementById('adminMenu').classList.toggle('collapsed');
-    tapCount = 0;
-    clearTimeout(tapTimer);
-  } else {
-    clearTimeout(tapTimer);
-    tapTimer = setTimeout(() => { tapCount = 0; }, 800);
+// quick check whether any radar within alert radius & ahead (fast)
+function isApproachingCameraFast() {
+  for (const r of radars) {
+    if (!r || r.lat==null) continue;
+    const dKm = distance(userLat, userLon, r.lat, r.lon);
+    if (dKm <= ALERT_RADIUS_KM && isRadarAhead(r, userHeading)) return true;
   }
-});
-
-// Admin buttons behavior (must exist in DOM)
-const btnRadar = document.getElementById('testRadar');
-const btnAvgZone = document.getElementById('testAvgZone');
-const btnClear = document.getElementById('testClear');
-
-if (btnRadar) btnRadar.addEventListener('click', () => showApproachingAlert({ flg: 1 }, 500));
-if (btnAvgZone) btnAvgZone.addEventListener('click', () => showApproachingAlert({ flg: 2 }, 800));
-if (btnClear) btnClear.addEventListener('click', () => {
-  alertPopup.classList.add('hidden');
-  hideAvgZone();
-});
-
-/* ---------- Hook into position updates ---------- */
-
-// Replace previous raw onPosition actions with this consolidated handler.
-// If chunk1 was using navigator.watchPosition to update currentPos & userLat/userLon,
-// ensure it now calls onGPSUpdate(lat, lon, speed, heading)
-
-function onGPSUpdate(lat, lon, speed, heading) {
-  userLat = lat; userLon = lon;
-  userSpeed = (speed != null) ? (speed * 3.6) : userSpeed; // keep previous if null
-  if (heading != null) currentPos = currentPos || {};
-  currentPos = Object.assign(currentPos || {}, { lat: userLat, lon: userLon, heading });
-  // Throttled update handles markers + alerts + avg-zone
-  onPositionThrottled();
+  return false;
 }
 
-// If your watchPosition currently calls code inline, change to call onGPSUpdate.
-// Example usage from chunk1's geolocation handler:
-// navigator.geolocation.watchPosition(p => {
-//    onGPSUpdate(p.coords.latitude, p.coords.longitude, p.coords.speed, p.coords.heading);
-// }, ...);
+// -------------------- Throttled visual update --------------------
+const visualUpdate = throttle(function() {
+  // update markers
+  updateNearbyMarkers(userLat, userLon);
 
-/* ---------- Startup tweaks ---------- */
+  // approaching detection + alerts
+  detectApproachingAndAlert();
 
-// start pip canvas loop (updates only UI; heavy work is throttled)
-startPipLoop();
+  // avg zone bar
+  detectAndShowAvgZone();
 
-// ensure map, data, geolocation were initialized in chunk1's init()
-// If your chunk1's init didn't call loadData/initMap/startGeolocation, ensure those are run before using this chunk.
+  // update pip frame (if not in pip loop also update)
+  renderPipFrame(userSpeed || 0, isApproachingCameraFast());
 
-console.log('Chunk 2 loaded: heading-aware alerts, 10km markers, avg-zone UI, admin menu.');
+  // update user marker & map center (keeps map centered)
+  if (userLat != null && userLon != null) {
+    updateUserMarker(userLat, userLon);
+  }
+}, VISUAL_THROTTLE_MS);
+
+// -------------------- Geolocation wrapper --------------------
+function onGPSUpdate(lat, lon, speedMps, headingFromDevice) {
+  // update lastPos for derived heading
+  const now = Date.now();
+  if (lastPos && lastPos.lat != null) {
+    // keep previous
+  }
+  lastPos = { lat: userLat, lon: userLon, t: now };
+
+  userLat = lat; userLon = lon;
+  if (speedMps != null && !isNaN(speedMps)) userSpeed = Math.round(speedMps * 3.6);
+  if (headingFromDevice != null && !isNaN(headingFromDevice)) userHeading = headingFromDevice;
+  else {
+    const derived = deriveHeading(lastPos, {lat:userLat, lon:userLon});
+    if (derived != null) userHeading = derived;
+  }
+
+  // minimal immediate update: speed number and small pip redraw
+  renderPipFrame(userSpeed || 0, isApproachingCameraFast());
+
+  // throttled heavy update
+  visualUpdate();
+}
+
+// -------------------- Geolocation start --------------------
+function startGeolocationWatcher() {
+  if (!('geolocation' in navigator)) {
+    showError('Geolocation not supported in this browser.');
+    return;
+  }
+  if (watchId) navigator.geolocation.clearWatch(watchId);
+  watchId = navigator.geolocation.watchPosition(ev => {
+    onGPSUpdate(ev.coords.latitude, ev.coords.longitude, ev.coords.speed, ev.coords.heading);
+  }, err => {
+    console.warn('GPS error', err);
+    showError('GPS error: ' + (err && err.message ? err.message : err));
+  }, { enableHighAccuracy: true, maximumAge: 500, timeout: 10000 });
+}
+
+// -------------------- Admin menu (triple-tap toggle) --------------------
+(function adminSetup() {
+  let tapCounter = 0, tTimer = null;
+  document.addEventListener('click', () => {
+    tapCounter++;
+    if (tapCounter === 3) {
+      if (adminMenu) adminMenu.classList.toggle('collapsed');
+      tapCounter = 0;
+      clearTimeout(tTimer);
+      return;
+    }
+    clearTimeout(tTimer);
+    tTimer = setTimeout(()=> tapCounter = 0, 800);
+  });
+
+  if (btnRadar) btnRadar.addEventListener('click', ()=> showApproachingAlert({ flg:1 }, 500));
+  if (btnAvgZone) btnAvgZone.addEventListener('click', ()=> showApproachingAlert({ flg:2 }, 800));
+  if (btnClear) btnClear.addEventListener('click', ()=> { alertPopup.classList.add('hidden'); hideAvgZone(); });
+})();
+
+// -------------------- PiP button --------------------
+if (pipToggle) {
+  pipToggle.addEventListener('click', async () => {
+    if (!document.pictureInPictureEnabled) {
+      showError('Picture-in-Picture not supported in this browser.');
+      return;
+    }
+    try {
+      if (!pipVideo.srcObject) {
+        const stream = pipCanvas.captureStream(25);
+        pipVideo.srcObject = stream;
+        await pipVideo.play().catch(()=>{});
+      }
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
+        pipToggle.textContent = 'Enable PiP';
+      } else {
+        await pipVideo.requestPictureInPicture();
+        pipToggle.textContent = 'Disable PiP';
+      }
+    } catch (e) {
+      console.error('PiP error', e);
+      showError('PiP error: ' + (e && e.message ? e.message : e));
+    }
+  });
+}
+
+// -------------------- NoSleep enable on user gesture --------------------
+if (noSleep) {
+  document.addEventListener('click', () => {
+    try { noSleep.enable(); } catch(e) { /* ignore */ }
+  }, { once: true });
+}
+
+// -------------------- Init function (load data, map, start gps, pip loop) --------------------
+async function initAppFull() {
+  try {
+    initMap();
+    await loadData();
+    // center map on first known good position when available by waiting a bit or using geolocation
+    startGeolocationWatcher();
+    startPipLoop();
+    // initial render of pip
+    renderPipFrame(userSpeed || 0, false);
+  } catch (e) {
+    console.error('init error', e);
+    showError('Initialization error');
+  }
+}
+
+// run init
+initAppFull();
+
+// expose debug helpers
+window.RadarNav = {
+  findNearest: () => findNearestRelevantRadar?.() ?? null,
+  radarsCount: () => radars.length,
+  refetch: async () => { await loadData(); updateNearbyMarkers(userLat, userLon); },
+  clearMarkers: () => { for (const m of activeMarkers.values()) try{ map.removeLayer(m); } catch{} activeMarkers.clear(); }
+};
