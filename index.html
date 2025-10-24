@@ -1,38 +1,60 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RadarNav</title>
-<link rel="stylesheet" href="style.css">
-<link rel="manifest" href="manifest.json">
-<link rel="icon" href="assets/icon.png">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="nosleep.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Smart Radar Detector</title>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"/>
+
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-<div id="map"></div>
 
-<!-- UI Overlay -->
-<div id="uiOverlay">
-  <div id="speedDisplay">0 km/h</div>
-  <div id="alertPopup" class="hidden">
-    <span id="alertText">Alert!</span>
+  <!-- MAP -->
+  <div id="map"></div>
+
+  <!-- TOP BAR -->
+  <div id="top-bar">
+    <button id="menu-toggle"><i class="bi bi-list"></i></button>
+    <h1>Smart Radar</h1>
   </div>
-  <div id="avgZoneBar" class="hidden">
-    <div id="progressFill"></div>
-    <div id="carMarker"></div>
-    <div id="zoneLimitVal"></div>
-    <div id="avgSpeedVal"></div>
+
+  <!-- ALERT OVERLAY -->
+  <div id="alert-overlay" class="hidden">
+    <div id="alert-box">
+      <i class="bi bi-exclamation-triangle-fill"></i>
+      <p id="alert-text">Radar ahead!</p>
+      <div id="progress-bar"><div></div></div>
+    </div>
   </div>
-  <button id="pipToggle">Enable PiP</button>
-</div>
 
-<!-- PiP hidden video & canvas -->
-<video id="pipVideo" autoplay muted playsinline style="display:none"></video>
-<canvas id="pipCanvas" width="300" height="200" style="display:none"></canvas>
+  <!-- SPEED DISPLAY -->
+  <div id="speed-display">
+    <div id="speed-value">0</div>
+    <div id="speed-unit">km/h</div>
+  </div>
 
-<script src="app.js" type="module"></script>
+  <!-- ADMIN MENU -->
+  <div id="admin-panel" class="collapsed">
+    <h2>Admin Menu</h2>
+    <button id="reload-btn">Reload Data</button>
+    <button id="toggle-pip">Enable PiP</button>
+    <button id="clear-alerts">Clear Alerts</button>
+  </div>
+
+  <!-- POPUPS -->
+  <div id="popup-container"></div>
+
+  <!-- NoSleep -->
+  <script src="https://cdn.jsdelivr.net/npm/nosleep.js/dist/NoSleep.min.js"></script>
+
+  <!-- Main Script -->
+  <script src="app.js"></script>
 </body>
 </html>
