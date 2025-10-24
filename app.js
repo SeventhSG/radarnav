@@ -1,4 +1,5 @@
-// app.js - RadarNav Mobile v2
+// app.js - RadarNav Mobile Full
+
 let map, userMarker;
 let radars = [];
 let avgZones = [];
@@ -21,13 +22,13 @@ const carMarker = document.getElementById('carMarker');
 const speedDisplay = document.getElementById('speedDisplay');
 const pipToggle = document.getElementById('pipToggle');
 
-// chime alert
-const chime = new Audio('assets/chime.mp3'); 
+const chime = new Audio('assets/chime.mp3');
 
 let currentPos = null;
 let activeAvgZone = null;
-let visibleRadars = [];
+let avgZoneData = {};
 
+// Initialize app
 async function init() {
     await loadData();
     initMap();
@@ -36,69 +37,168 @@ async function init() {
     startCanvasLoop();
 }
 
-// Load SCDB and average zones
-async function loadData(){
-    try{
+// Load SCDB JSON and avg zones
+async function loadData() {
+    try {
         const res = await fetch('SCDB_SpeedCams.json');
-        const data = await res.text();
+        let text = await res.text();
 
-        // Fix SCDB formatting: split multiple JSON objects
-        const cams = data.split(/\r?\n/).filter(l=>l.trim().startsWith("{lat"));
-        radars = cams.map(line => JSON.parse(line));
+        // SCDB is not strict JSON, split by lines and parse manually
+        let lines = text.split(/\r?\n/).filter(l => l.trim().startsWith('{') && l.includes('lat'));
+        radars = lines.map(l => {
+            let cam = JSON.parse(l);
+            return { lat: cam.lat, lon: cam.lon, flg: cam.flg, unt: cam.unt };
+        });
         console.log(`Loaded ${radars.length} cameras`);
 
         const z = await fetch('avg_zones.json');
         avgZones = await z.json();
-    } catch(err){
-        showError(`Failed to load SCDB or avg zones: ${err}`);
+    } catch(err) {
+        console.error('Failed to load SCDB or avg zones', err);
+        showAlert('Failed to load SCDB: '+err.message);
     }
-}
-
-// Display errors on screen
-function showError(msg){
-    const errorDiv = document.getElementById('errorDiv');
-    if(errorDiv){
-        errorDiv.textContent = msg;
-        errorDiv.classList.remove('hidden');
-    }
-    console.error(msg);
 }
 
 // Initialize Leaflet map
-function initMap(){
-    map = L.map('map', { zoomControl:false }).setView([39.0,35.0], 6); // default Turkey center
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-        attribution:'&copy; OpenStreetMap contributors'
+function initMap() {
+    map = L.map('map', { zoomControl: true }).setView([39.9334,32.8597], 10); // default to Ankara
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
     userMarker = L.circleMarker([0,0], { radius:8, color:'#00e5ff', fillColor:'#00a3b7', fillOpacity:1 }).addTo(map);
-}
 
-// Start GPS tracking
-function startGeolocation(){
-    if(!('geolocation' in navigator)){ alert('Geolocation not supported'); return; }
-    watchId = navigator.geolocation.watchPosition(onPosition,onGeoError,{
-        enableHighAccuracy:true,
-        maximumAge:500,
-        timeout:10000
+    // show radars on map (all for now, will filter by distance later)
+    radars.forEach(r => {
+        let color = r.flg === 2 ? '#ff0000' : '#ffcc00'; // red for avg, yellow for fixed
+        r.marker = L.circle([r.lat,r.lon], { radius: 12, color: color, weight:2 }).addTo(map);
+    });
+
+    avgZones.forEach(z => {
+        z.line = L.polyline([[z.start.lat,z.start.lng],[z.end.lat,z.end.lng]], { color:'#88f', weight:4, opacity:0.7 }).addTo(map);
     });
 }
 
-function onGeoError(err){ showError(`Geo error: ${err.message}`); }
+// Start continuous geolocation
+function startGeolocation(){
+    if (!('geolocation' in navigator)){
+        showAlert('Geolocation not supported');
+        return;
+    }
+    watchId = navigator.geolocation.watchPosition(onPosition, onGeoError, {
+        enableHighAccuracy: true,
+        maximumAge: 500,
+        timeout: 10000
+    });
+}
+
+function onGeoError(err){
+    console.warn('Geo error', err);
+    showAlert('GPS Error: '+err.message);
+}
+
+let lastAlertTime = 0;
 
 // Haversine distance in meters
 function distanceMeters(aLat,aLng,bLat,bLng){
-    const R=6371000,toRad=v=>v*Math.PI/180;
-    const dLat = toRad(bLat-aLat), dLon=toRad(bLng-aLng);
-    const lat1 = toRad(aLat), lat2=toRad(bLat);
-    const a = Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;
-    return 2*R*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+    const R = 6371000;
+    const toRad = v => v * Math.PI/180;
+    const dLat = toRad(bLat-aLat);
+    const dLon = toRad(bLng-aLng);
+    const lat1 = toRad(aLat);
+    const lat2 = toRad(bLat);
+    const sinDLat = Math.sin(dLat/2);
+    const sinDLon = Math.sin(dLon/2);
+    const aa = sinDLat*sinDLat + Math.cos(lat1)*Math.cos(lat2)*sinDLon*sinDLon;
+    const c = 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1-aa));
+    return R*c;
 }
 
-// PiP setup
+// Position updates
+function onPosition(p){
+    const lat = p.coords.latitude;
+    const lng = p.coords.longitude;
+    const speedMps = p.coords.speed;
+    const kmh = speedMps==null ? lastSpeed : Math.round(speedMps*3.6);
+    lastSpeed = kmh;
+
+    currentPos = {lat,lng,speed:kmh};
+    userMarker.setLatLng([lat,lng]);
+    map.setView([lat,lng], map.getZoom());
+
+    speedDisplay.textContent = kmh;
+
+    updateRadarMarkers();
+    detectRadars(lat,lng);
+    detectAvgZones(lat,lng,kmh);
+    drawPiP(kmh);
+}
+
+// Update radar visibility to 100km radius
+function updateRadarMarkers(){
+    if(!currentPos) return;
+    radars.forEach(r=>{
+        const d = distanceMeters(currentPos.lat,currentPos.lon,r.lat,r.lon);
+        if(r.marker){
+            if(d<=100000){ r.marker.addTo(map); }
+            else { map.removeLayer(r.marker); }
+        }
+    });
+}
+// Detect nearby radars (<1 km) and show alerts
+function detectRadars(lat,lng){
+    const now = Date.now();
+    radars.forEach(r=>{
+        const d = distanceMeters(lat,lng,r.lat,r.lon);
+        if(d<1000 && now - lastAlertTime>5000){ // alert only within 1 km
+            const type = r.flg===2 ? 'Average' : 'Fixed';
+            showAlert(`${type} Radar ahead — ${Math.round(d)} m`, r.flg===2);
+            lastAlertTime = now;
+        }
+    });
+}
+
+// Show alert popup
+function showAlert(text, showAvg=false){
+    alertText.textContent = text;
+    alertPopup.classList.remove('hidden');
+    if(showAvg){
+        avgZoneBar.classList.remove('hidden');
+        avgSpeedVal.textContent = lastSpeed;
+        zoneLimitVal.textContent = '???'; // optionally use zone limit
+        progressFill.style.width = '50%'; // placeholder
+        carMarker.style.left = '50%';
+    } else {
+        avgZoneBar.classList.add('hidden');
+    }
+
+    if(chime){
+        chime.currentTime=0;
+        const playPromise = chime.play();
+        if(playPromise && typeof playPromise.then==='function'){
+            playPromise.catch(e=>console.warn('Chime prevented:',e));
+        }
+    }
+
+    clearTimeout(alertPopup._timeout);
+    alertPopup._timeout = setTimeout(()=>{
+        alertPopup.classList.add('hidden');
+        avgZoneBar.classList.add('hidden');
+    },4000);
+}
+
+// Detect average zones (optional, for avg cameras)
+function detectAvgZones(lat,lng,kmh){
+    if(!activeAvgZone) return; // simplified, handled via SCDB avg
+}
+
+// PiP functionality (speed only until approaching camera)
 function setupPiPButton(){
     pipToggle.addEventListener('click', async ()=>{
-        if(!document.pictureInPictureEnabled){ alert('PiP not supported'); return; }
+        if(!document.pictureInPictureEnabled){
+            showAlert('PiP not supported');
+            return;
+        }
         try{
             if(!pipStream){
                 pipStream = pipCanvas.captureStream(25);
@@ -107,164 +207,56 @@ function setupPiPButton(){
             }
             if(document.pictureInPictureElement){
                 await document.exitPictureInPicture();
-                pipToggle.textContent='Enable PiP'; pipEnabled=false;
-            }else{
+                pipToggle.textContent='Enable PiP';
+                pipEnabled=false;
+            } else {
                 await pipVideo.requestPictureInPicture();
-                pipToggle.textContent='Disable PiP'; pipEnabled=true;
+                pipToggle.textContent='Disable PiP';
+                pipEnabled=true;
             }
-        }catch(err){ showError(`PiP error: ${err}`);}
+        } catch(err){ console.error('PiP error',err);}
     });
-    document.addEventListener('leavepictureinpicture',()=>{ pipEnabled=false; pipToggle.textContent='Enable PiP'; });
-    document.addEventListener('enterpictureinpicture',()=>{ pipEnabled=true; pipToggle.textContent='Disable PiP'; });
+
+    document.addEventListener('leavepictureinpicture',()=>{pipEnabled=false;pipToggle.textContent='Enable PiP';});
+    document.addEventListener('enterpictureinpicture',()=>{pipEnabled=true;pipToggle.textContent='Disable PiP';});
 }
 
-// Update canvas
-function startCanvasLoop(){
-    setInterval(()=>{ renderPipFrame(lastSpeed||0); }, 300);
-}
-function onPosition(p){
-    const lat = p.coords.latitude;
-    const lng = p.coords.longitude;
-    const speedMps = p.coords.speed;
-    const kmh = speedMps == null ? lastSpeed : Math.round(speedMps * 3.6);
-    lastSpeed = kmh;
-
-    currentPos = {lat,lng,speedMps,kmh};
-
-    map.setView([lat,lng], map.getZoom());
-    userMarker.setLatLng([lat,lng]);
-
-    // Filter radars within 100 km
-    visibleRadars = radars.filter(r => distanceMeters(lat,lng,r.lat,r.lon)<=100000);
-
-    updateRadarMarkers();
-    detectApproachingRadar(lat,lng);
-    detectAvgZones(lat,lng,kmh);
-    drawPiP(kmh);
-}
-
-// Draw radar markers dynamically
-let radarMarkers = [];
-function updateRadarMarkers(){
-    // clear previous markers
-    radarMarkers.forEach(m=>map.removeLayer(m));
-    radarMarkers=[];
-
-    visibleRadars.forEach(r=>{
-        const marker = L.circle([r.lat,r.lon],{
-            radius:200, // 200m radius visible marker
-            color:r.flg==2?'#ff6600':'#00ff66', // different for fixed vs average
-            weight:2
-        }).addTo(map);
-        radarMarkers.push(marker);
-    });
-}
-
-// Detect approaching radars (<1 km)
-let lastRadarAlertTime=0;
-function detectApproachingRadar(lat,lng){
-    const now = Date.now();
-    visibleRadars.forEach(r=>{
-        const d = distanceMeters(lat,lng,r.lat,r.lon);
-        if(d<=1000 && now-lastRadarAlertTime>5000){ // 1 km alert, 5s throttle
-            showAlert(`${r.flg==2?'Radar':'Average Camera'} ahead — ${Math.round(d)} m`);
-            lastRadarAlertTime=now;
-        }
-    });
-}
-
-// Show alert popup
-function showAlert(text){
-    alertText.textContent=text;
-    alertPopup.classList.remove('hidden');
-
-    // play chime
-    if(chime){
-        chime.currentTime=0;
-        const playPromise = chime.play();
-        if(playPromise && typeof playPromise.then==='function'){
-            playPromise.catch(e=>console.warn('Chime play prevented:',e));
-        }
+// Draw PiP frame
+function drawPiP(kmh=0){
+    // check if any radar within 1 km, else show only speed
+    let showFull=false;
+    if(currentPos){
+        showFull = radars.some(r=>distanceMeters(currentPos.lat,currentPos.lon,r.lat,r.lon)<1000);
     }
 
-    // hide after 4s
-    clearTimeout(alertPopup._timeout);
-    alertPopup._timeout=setTimeout(()=>{ alertPopup.classList.add('hidden'); },4000);
-}
-
-// Average speed zone detection
-function detectAvgZones(lat,lng,kmh){
-    let active=null;
-    for(let z of avgZones){
-        const total=distanceMeters(z.start.lat,z.start.lng,z.end.lat,z.end.lng);
-        const distToStart=distanceMeters(z.start.lat,z.start.lng,lat,lng);
-        const distToEnd=distanceMeters(z.end.lat,z.end.lng,lat,lng);
-        if(Math.abs(distToStart+distToEnd-total)<60 && distToStart<=total+30){
-            active={zone:z,total,distToStart}; break;
-        }
-    }
-
-    if(active && active.zone.flg==1){ // show progress only for average speed cameras
-        const pct=Math.min(1,Math.max(0,active.distToStart/active.total));
-        showAvgZone(active.zone,pct,kmh);
-        activeAvgZone=active.zone;
-    }else{
-        hideAvgZone();
-        activeAvgZone=null;
-    }
-}
-
-function showAvgZone(zone,pct,kmh){
-    avgZoneBar.classList.remove('hidden');
-    avgSpeedVal.textContent=kmh;
-    zoneLimitVal.textContent=zone.limit;
-
-    const percent=Math.round(pct*100);
-    progressFill.style.width=`${percent}%`;
-    carMarker.style.left=`${percent}%`;
-
-    // color ramp
-    const over=kmh-zone.limit;
-    let fillBg;
-    if(over<=0){ fillBg='linear-gradient(90deg, rgba(0,229,255,0.2), rgba(0,229,255,0.6))'; }
-    else{
-        const r=Math.min(255,Math.round((over/zone.limit)*255*1.4));
-        const g=Math.max(0,200-Math.round((over/zone.limit)*200));
-        fillBg=`linear-gradient(90deg, rgba(${r},${g},60,0.25), rgba(${r},${g},60,0.7))`;
-    }
-    progressFill.style.background=fillBg;
-}
-
-function hideAvgZone(){ avgZoneBar.classList.add('hidden'); }
-
-// PiP: show only speed until <1 km from radar, else show alert
-function drawPiP(kmh){
-    const ctx=pipCtx,w=pipCanvas.width,h=pipCanvas.height;
-    ctx.clearRect(0,0,w,h);
-    ctx.fillStyle='#071021'; ctx.fillRect(0,0,w,h);
-
-    let radarNearby = visibleRadars.some(r=>distanceMeters(currentPos.lat,currentPos.lng,r.lat,r.lon)<1000);
-
-    if(radarNearby && !alertPopup.classList.contains('hidden')){
-        // show alert in PiP
-        roundRect(ctx, 10,10,w-20,h-20,18,'#122033');
-        ctx.font='22px Inter, Arial'; ctx.fillStyle='#ffd7d7';
-        ctx.fillText('🚨',28,58);
-        ctx.font='18px Inter, Arial'; ctx.fillStyle='#ffffff';
-        wrapText(ctx,alertText.textContent||'Alert',70,48,w-100,22);
-    }else{
-        // show speed only
-        roundRect(ctx,20,50,w-40,h-100,14,'#0b2a33');
-        ctx.font='26px Inter, Arial'; ctx.fillStyle='#00e5ff';
-        ctx.fillText(`${kmh} km/h`,50,100);
-    }
+    renderPipFrame(kmh,showFull);
 
     if(!pipInterval){
-        pipInterval=setInterval(()=>{ drawPiP(lastSpeed||0); },200);
+        pipInterval=setInterval(()=>{ renderPipFrame(lastSpeed,lastAlertTime>0); },200);
     }
 }
 
-// small helper: rounded rect
+// Render PiP frame
+function renderPipFrame(kmh, showFull=false){
+    const ctx = pipCtx, w=pipCanvas.width, h=pipCanvas.height;
+    ctx.clearRect(0,0,w,h);
+    ctx.fillStyle='#071021';
+    ctx.fillRect(0,0,w,h);
+
+    if(showFull && !alertPopup.classList.contains('hidden')){
+        roundRect(ctx,10,10,w-20,h-20,18,'#122033');
+        ctx.font='22px Inter,Arial'; ctx.fillStyle='#ffd7d7';
+        ctx.fillText('🚨',28,58);
+        ctx.font='18px Inter,Arial'; ctx.fillStyle='#ffffff';
+        wrapText(ctx, alertText.textContent||'Alert',70,48,w-100,22);
+    } else {
+        roundRect(ctx,20,50,w-40,h-100,14,'#0b2a33');
+        ctx.font='26px Inter,Arial'; ctx.fillStyle='#00e5ff';
+        ctx.fillText(`${kmh} km/h`,50,100);
+    }
+}
+
+// Rounded rect helper
 function roundRect(ctx,x,y,width,height,radius,fillStyle){
     ctx.beginPath();
     ctx.moveTo(x+radius,y); ctx.lineTo(x+width-radius,y);
@@ -273,22 +265,49 @@ function roundRect(ctx,x,y,width,height,radius,fillStyle){
     ctx.quadraticCurveTo(x+width,y+height,x+width-radius,y+height);
     ctx.lineTo(x+radius,y+height);
     ctx.quadraticCurveTo(x,y+height,x,y+height-radius);
-    ctx.lineTo(x,y+radius);
-    ctx.quadraticCurveTo(x,y,x+radius,y);
-    ctx.closePath(); ctx.fillStyle=fillStyle; ctx.fill();
+    ctx.lineTo(x,y+radius); ctx.quadraticCurveTo(x,y,x+radius,y);
+    ctx.closePath();
+    ctx.fillStyle=fillStyle; ctx.fill();
 }
 
-// wrapText helper
+// Wrap text helper
 function wrapText(ctx,text,x,y,maxWidth,lineHeight){
-    const words=text.split(' '); let line='';
+    const words = text.split(' '); let line='';
     for(let n=0;n<words.length;n++){
         const testLine=line+words[n]+' ';
         const metrics=ctx.measureText(testLine);
-        const testWidth=metrics.width;
-        if(testWidth>maxWidth && n>0){ ctx.fillText(line,x,y); line=words[n]+' '; y+=lineHeight; }
-        else{ line=testLine; }
+        if(metrics.width>maxWidth && n>0){ctx.fillText(line,x,y); line=words[n]+' '; y+=lineHeight;} 
+        else { line=testLine; }
     }
     ctx.fillText(line,x,y);
+}
+
+// Keep canvas updated
+function startCanvasLoop(){
+    setInterval(()=>{ renderPipFrame(lastSpeed,lastAlertTime>0); },300);
+}
+
+// Admin menu (3 taps)
+let adminTapCount=0, adminTimeout=null;
+document.addEventListener('click',()=>{
+    adminTapCount++;
+    if(adminTapCount>=3){
+        document.getElementById('adminMenu').classList.toggle('hidden');
+        adminTapCount=0;
+    }
+    clearTimeout(adminTimeout);
+    adminTimeout=setTimeout(()=>{adminTapCount=0;},1000);
+});
+
+// Prevent screen sleep
+if('wakeLock' in navigator){
+    let wakeLock=null;
+    async function requestWakeLock(){
+        try{ wakeLock = await navigator.wakeLock.request('screen'); }
+        catch(e){ console.warn('WakeLock failed',e); }
+    }
+    requestWakeLock();
+    document.addEventListener('visibilitychange', ()=>{if(!wakeLock) requestWakeLock();});
 }
 
 init();
