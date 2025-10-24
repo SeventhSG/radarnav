@@ -1,56 +1,40 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>RadarNav (PWA prototype)</title>
-
-  <!-- Leaflet -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-  <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="style.css" />
+<meta charset="UTF-8">
+<title>RadarNav Turkey</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<style>
+  html, body, #map { height: 100%; margin:0; padding:0; }
+  #alertPopup {
+    position: fixed; top:20px; left:50%; transform:translateX(-50%);
+    background:#122033; color:white; padding:12px 20px; border-radius:14px;
+    font-family:sans-serif; font-size:16px; z-index:999; display:none;
+  }
+  #avgZoneBar { position:fixed; bottom:20px; left:20px; width:300px; height:24px;
+    background:#222; border-radius:12px; display:none; z-index:999; }
+  #progressFill { height:100%; width:0%; border-radius:12px; background:linear-gradient(90deg,#0bf,#0ff);}
+  #carMarker { position:absolute; top:-4px; font-size:18px; }
+  #speedDisplay { position:fixed; top:20px; right:20px; background:#0b2a33;color:#0ff;
+    font-size:22px;padding:8px 16px;border-radius:12px;font-family:sans-serif;}
+  #pipToggle { position:fixed; bottom:20px; right:20px;padding:8px 14px; background:#0b2a33;
+    color:#0ff;border:none;border-radius:10px;cursor:pointer; font-family:sans-serif;}
+  canvas { display:none; }
+</style>
 </head>
 <body>
-  <div id="app">
-    <div id="topbar">
-      <div id="speedDisplay">-- km/h</div>
-      <button id="pipToggle">Enable PiP</button>
-    </div>
-
-    <div id="map"></div>
-
-    <!-- Popup area (rounded card style) -->
-    <div id="alertPopup" class="hidden">
-      <div id="alertIcon">🚨</div>
-      <div id="alertText">Radar ahead — 300 m</div>
-    </div>
-
-    <!-- Average zone progress bar -->
-    <div id="avgZoneBar" class="hidden">
-      <div id="avgZoneInfo">
-        <div id="avgSpeeds">
-          <div>Avg: <span id="avgSpeedVal">0</span> km/h</div>
-          <div>Limit: <span id="zoneLimitVal">0</span> km/h</div>
-        </div>
-        <div id="progressWrap">
-          <div id="progressLine">
-            <div id="carMarker">🚗</div>
-            <div id="progressFill"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Audio -->
-    <audio id="chime" src="assets/chime.mp3" preload="auto"></audio>
-    <!-- Hidden video for PiP -->
-    <video id="pipVideo" playsinline muted style="display:none"></video>
-    <canvas id="pipCanvas" width="400" height="200" style="display:none"></canvas>
-
-  </div>
-
-  <script src="app.js"></script>
+<div id="map"></div>
+<div id="alertPopup"></div>
+<div id="avgZoneBar"><div id="progressFill"><span id="carMarker">🚗</span></div>
+<span id="avgSpeedVal" style="position:absolute;right:10px;top:-28px;color:#0ff"></span>
+<span id="zoneLimitVal" style="position:absolute;right:10px;top:-48px;color:#fff"></span>
+</div>
+<div id="speedDisplay">0 km/h</div>
+<button id="pipToggle">Enable PiP</button>
+<video id="pipVideo" autoplay muted></video>
+<canvas id="pipCanvas" width="300" height="120"></canvas>
+<audio id="chime" src="assets/chime.mp3" preload="auto"></audio>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
