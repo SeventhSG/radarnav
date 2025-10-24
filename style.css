@@ -1,142 +1,28 @@
-/* ------------------ style.css ------------------ */
-
-/* Full-screen map container */
-#map {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1; /* base layer */
+html, body, #map { height: 100%; margin: 0; padding: 0; }
+#uiOverlay {
+    position: absolute; top: 0; left: 0; width: 100%; pointer-events: none;
+    display: flex; flex-direction: column; align-items: center; z-index: 999;
 }
-
-/* Alert popup (centered) */
-#alertPopup {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background-color: rgba(18, 32, 51, 0.9);
-  color: #fff;
-  padding: 25px 40px;
-  font-size: 22px;
-  font-weight: bold;
-  border-radius: 16px;
-  text-align: center;
-  z-index: 9999;
-  display: none; /* hidden by default, shown via JS */
-  pointer-events: none;
-}
-
-/* Show class */
-#alertPopup.active {
-  display: block;
-}
-
-/* Average speed bar */
-#avgZoneBar {
-  position: fixed;
-  bottom: 20px;
-  left: 10%;
-  width: 80%;
-  height: 40px;
-  background-color: rgba(11, 42, 51, 0.7);
-  border-radius: 20px;
-  display: none; /* show only under avg camera alerts */
-  z-index: 9998;
-}
-
-/* Fill inside average zone bar */
-#progressFill {
-  height: 100%;
-  width: 0%;
-  border-radius: 20px;
-  transition: width 0.2s ease, background 0.2s ease;
-}
-
-/* Car marker in avg bar */
-#carMarker {
-  position: absolute;
-  top: -5px;
-  width: 20px;
-  height: 50px;
-  background-color: #00e5ff;
-  border-radius: 5px;
-  transform: translateX(-50%);
-}
-
-/* Speed display (when PiP off) */
 #speedDisplay {
-  position: fixed;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  color: #00e5ff;
-  font-size: 28px;
-  font-weight: bold;
-  z-index: 9998;
+    font-size: 36px; color: #00e5ff; margin-top: 10px; background: rgba(0,0,0,0.3);
+    padding: 6px 12px; border-radius: 8px; pointer-events: auto;
 }
-
-/* PiP toggle button */
-#pipToggle {
-  position: fixed;
-  bottom: 80px;
-  right: 20px;
-  padding: 12px 18px;
-  background-color: rgba(0,229,255,0.8);
-  color: #000;
-  font-weight: bold;
-  border-radius: 10px;
-  cursor: pointer;
-  z-index: 9999;
+#alertPopup {
+    position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%);
+    background: rgba(255,0,0,0.8); color: white; font-size: 28px;
+    padding: 12px 20px; border-radius: 12px; text-align: center;
+    pointer-events: auto; z-index: 1000;
 }
-
-/* Admin menu */
-#adminMenu {
-  position: fixed;
-  top: 80px;
-  left: 10px;
-  width: 200px;
-  background-color: rgba(18,32,51,0.9);
-  border-radius: 12px;
-  padding: 10px;
-  z-index: 9999;
-  transition: all 0.3s ease;
+.hidden { display: none !important; }
+#avgZoneBar {
+    margin-top: 10px; background: rgba(0,0,0,0.5); padding: 6px 12px;
+    border-radius: 8px; pointer-events: auto;
 }
-
-#adminMenu.collapsed {
-  transform: translateX(-220px);
-  opacity: 0;
-}
-
-/* Buttons inside admin */
-#adminMenu button {
-  width: 100%;
-  margin: 5px 0;
-  padding: 10px;
-  border: none;
-  border-radius: 8px;
-  background-color: #00e5ff;
-  color: #000;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-/* PiP canvas overlay */
-#pipCanvas {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 180px;
-  height: 120px;
-  z-index: 9999;
-  border-radius: 12px;
-  background-color: #071021;
-}
-
-/* Make sure overlays are always above map */
-.overlay-ui {
-  pointer-events: auto;
-  z-index: 9999;
-}
+#progressContainer { position: relative; width: 100%; height: 12px; background: rgba(255,255,255,0.2); border-radius: 6px; margin-top: 4px; }
+#progressFill { height: 100%; width: 0%; background: #0ff; border-radius: 6px; transition: width 0.2s; }
+#carMarker { position: absolute; top: -4px; width: 8px; height: 20px; background: red; border-radius: 2px; left: 0%; transition: left 0.2s; }
+#pipToggle { margin-top: 10px; pointer-events: auto; padding: 6px 12px; font-size: 16px; border-radius: 6px; background: #222; color: #0ff; border: none; }
+#adminMenu { position: fixed; bottom: 10px; left: 10px; z-index: 1000; pointer-events: auto; }
+#adminMenu button { margin: 4px; padding: 6px 12px; font-size: 14px; border-radius: 6px; border: none; background: #444; color: #fff; }
+#pipVideo { display: none; }
+#pipCanvas { display: none; }
