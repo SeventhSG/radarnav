@@ -1,146 +1,345 @@
-let map, userMarker;
-let radars = [];
-let avgZones = [];
-let lastSpeed = 0;
-let pipEnabled = false;
-let pipCanvas=document.getElementById('pipCanvas');
-let pipCtx=pipCanvas.getContext('2d');
-let pipVideo=document.getElementById('pipVideo');
-let pipStream=null, pipInterval=null;
-const alertPopup=document.getElementById('alertPopup');
-const alertText=document.getElementById('alertText');
-const avgZoneBar=document.getElementById('avgZoneBar');
-const progressFill=document.getElementById('progressFill');
-const carMarker=document.getElementById('carMarker');
-const avgSpeedVal=document.getElementById('avgSpeedVal');
-const zoneLimitVal=document.getElementById('zoneLimitVal');
-const speedDisplay=document.getElementById('speedDisplay');
-const pipToggle=document.getElementById('pipToggle');
-const chime=new Audio('assets/chime.mp3');
-let lastAlertTime=0;
-let activeAvgZone=null;
-let noSleep=new NoSleep();
+// app.js
+import NoSleep from './nosleep.js';
+const noSleep = new NoSleep();
+noSleep.enable();
 
-// ---------------- LOAD DATA ----------------
-async function loadData(){
-    try{
-        const res=await fetch('SCDB_SpeedCams.json');
-        const text=await res.text();
-        let lines=text.trim().split('\n');
-        radars=[];
-        lines.forEach(l=>{
-            try{
-                if(l.startsWith('{') && l.includes('lat')) {
-                    let obj=JSON.parse(l);
-                    radars.push({lat:obj.lat, lon:obj.lon, flg:obj.flg, unt:obj.unt});
-                }
-            }catch(e){console.warn('Invalid line',l);}
+// --- Global variables ---
+let map, userMarker;
+let radars = [], avgZones = [];
+let watchId = null;
+let lastSpeed = 0;
+let currentHeading = 0;
+let currentPos = null;
+let pipEnabled = false;
+let pipVideo = document.getElementById('pipVideo');
+let pipCanvas = document.getElementById('pipCanvas');
+let pipCtx = pipCanvas.getContext('2d');
+let pipStream = null;
+let pipInterval = null;
+let activeAvgZone = null;
+let alertCooldown = 0;
+
+// UI elements
+const alertPopup = document.getElementById('alertPopup');
+const alertText = document.getElementById('alertText');
+const avgZoneBar = document.getElementById('avgZoneBar');
+const avgSpeedVal = document.getElementById('avgSpeedVal');
+const zoneLimitVal = document.getElementById('zoneLimitVal');
+const progressFill = document.getElementById('progressFill');
+const carMarker = document.getElementById('carMarker');
+const speedDisplay = document.getElementById('speedDisplay');
+const pipToggle = document.getElementById('pipToggle');
+const chime = new Audio('assets/chime.mp3');
+
+// --- Initialization ---
+async function init() {
+    await loadData();
+    initMap();
+    setupPiP();
+    setupAdminMenu();
+    startGeolocation();
+    startCanvasLoop();
+}
+
+// --- Load SCDB data ---
+async function loadData() {
+    try {
+        const res = await fetch('SCDB_SpeedCams.json');
+        const text = await res.text();
+
+        // Parse line-by-line JSON
+        radars = [];
+        text.split(/\r?\n/).forEach(line => {
+            try {
+                const obj = JSON.parse(line);
+                if (obj.lat && obj.lon) radars.push(obj);
+            } catch(e){ /* ignore invalid lines */ }
         });
         console.log(`Loaded ${radars.length} cameras`);
-    }catch(err){alert('Data load error: '+err);}
+
+        const z = await fetch('avg_zones.json');
+        avgZones = await z.json();
+        console.log(`Loaded ${avgZones.length} average speed zones`);
+    } catch(err) {
+        showError(`Data load error: ${err}`);
+        console.error(err);
+    }
 }
 
-// ---------------- INIT MAP ----------------
-function initMap(){
-    map=L.map('map',{zoomControl:false}).setView([0,0],15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OSM'}).addTo(map);
-    userMarker=L.circleMarker([0,0],{radius:8,color:'#00e5ff',fillColor:'#00a3b7',fillOpacity:1}).addTo(map);
+// --- Initialize Leaflet map ---
+function initMap() {
+    map = L.map('map', { zoomControl: true }).setView([0,0], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+        attribution:'&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    userMarker = L.marker([0,0], {icon: L.divIcon({className:'user-marker'})}).addTo(map);
 }
 
-// ---------------- GEOLOCATION ----------------
-function startGeolocation(){
-    if(!navigator.geolocation){alert('Geolocation unsupported');return;}
-    navigator.geolocation.watchPosition(onPosition, e=>console.warn('Geo error',e),{enableHighAccuracy:true,maximumAge:500,timeout:10000});
+// --- Geolocation ---
+function startGeolocation() {
+    if(!('geolocation' in navigator)) {
+        showError('Geolocation not supported');
+        return;
+    }
+
+    watchId = navigator.geolocation.watchPosition(onPosition, onGeoError, {
+        enableHighAccuracy:true,
+        maximumAge:500,
+        timeout:10000
+    });
 }
 
-function onPosition(p){
-    const lat=p.coords.latitude;
-    const lon=p.coords.longitude;
-    const speedMps=p.coords.speed;
-    lastSpeed=speedMps==null?lastSpeed:Math.round(speedMps*3.6);
-    speedDisplay.textContent=`${lastSpeed} km/h`;
-    map.setView([lat,lon],16);
-    userMarker.setLatLng([lat,lon]);
+function onGeoError(err) {
+    showError(`Geo error: ${err.message}`);
+}
 
-    detectRadars(lat,lon);
-    detectAvgZones(lat,lon,lastSpeed);
+function onPosition(p) {
+    const lat = p.coords.latitude;
+    const lng = p.coords.longitude;
+    const speedMps = p.coords.speed;
+    const heading = p.coords.heading;
+
+    currentPos = { lat, lng, speedMps, heading };
+    lastSpeed = speedMps ? Math.round(speedMps*3.6) : lastSpeed;
+    currentHeading = heading || currentHeading;
+
+    speedDisplay.textContent = `${lastSpeed} km/h`;
+
+    map.setView([lat, lng], map.getZoom(), {animate:true});
+
+    if(userMarker) {
+        userMarker.setLatLng([lat,lng]);
+        userMarker.setRotationAngle(currentHeading || 0);
+    }
+
+    updateRadars();
+    updateAvgZones();
     drawPiP(lastSpeed);
 }
 
-// ---------------- DISTANCE ----------------
-function distanceMeters(aLat,aLon,bLat,bLon){
-    const R=6371000, toRad=v=>v*Math.PI/180;
-    const dLat=toRad(bLat-aLat), dLon=toRad(bLon-aLon);
-    const lat1=toRad(aLat), lat2=toRad(bLat);
-    const sinDLat=Math.sin(dLat/2), sinDLon=Math.sin(dLon/2);
-    const aa=sinDLat*sinDLat+Math.cos(lat1)*Math.cos(lat2)*sinDLon*sinDLon;
-    return R*2*Math.atan2(Math.sqrt(aa),Math.sqrt(1-aa));
-}
+// --- PiP setup ---
+function setupPiP() {
+    pipToggle.addEventListener('click', async () => {
+        if(!document.pictureInPictureEnabled){
+            alert('PiP not supported');
+            return;
+        }
 
-// ---------------- RADAR DETECTION ----------------
-function detectRadars(lat,lon){
-    const now=Date.now();
-    radars.forEach(r=>{
-        const d=distanceMeters(lat,lon,r.lat,r.lon);
-        if(d<=10000){ // 10km visible
-            if(!r.marker) r.marker=L.circle([r.lat,r.lon],{radius:12,color:r.flg===1?'#00ff00':'#ffcc00',weight:2}).addTo(map);
-            if(d<=1000 && now-lastAlertTime>5000){
-                lastAlertTime=now;
-                activeAvgZone=r.flg===1?r:null;
-                showAlert(`${r.flg===1?'Average':'Fixed'} camera ahead ${Math.round(d)} m`);
-                playChime();
+        try {
+            if(!pipStream) {
+                pipStream = pipCanvas.captureStream(25);
+                pipVideo.srcObject = pipStream;
+                await pipVideo.play();
             }
+
+            if(document.pictureInPictureElement){
+                await document.exitPictureInPicture();
+                pipToggle.textContent = 'Enable PiP';
+                pipEnabled=false;
+            } else {
+                await pipVideo.requestPictureInPicture();
+                pipToggle.textContent='Disable PiP';
+                pipEnabled=true;
+            }
+        } catch(err){
+            showError(`PiP error: ${err}`);
         }
     });
 }
 
-// ---------------- ALERTS ----------------
-function showAlert(txt){
-    if(pipEnabled){
-        alertText.textContent=txt;
-        alertPopup.classList.remove('hidden');
-        setTimeout(()=>alertPopup.classList.add('hidden'),4000);
-    }
+// --- Display errors on screen ---
+function showError(msg){
+    alertText.textContent = msg;
+    alertPopup.classList.add('show');
+    setTimeout(()=>alertPopup.classList.remove('show'),5000);
 }
-function playChime(){if(chime){chime.currentTime=0;const p=chime.play();if(p&&p.then)p.catch(e=>console.warn(e));}}
-
-// ---------------- AVG ZONES ----------------
-function detectAvgZones(lat,lon,kmh){
-    if(!activeAvgZone||activeAvgZone.flg!==1){avgZoneBar.classList.add('hidden');return;}
-    avgZoneBar.classList.remove('hidden');
-    avgSpeedVal.textContent=kmh; zoneLimitVal.textContent=activeAvgZone.limit||50;
-    const pct=0.5;
-    const percent=Math.round(pct*100); progressFill.style.width=`${percent}%`;
-    carMarker.style.left=`${percent}%`;
+// --- Distance helper (meters) ---
+function distanceMeters(lat1, lon1, lat2, lon2){
+    const R = 6371000;
+    const toRad = v => v*Math.PI/180;
+    const dLat = toRad(lat2-lat1);
+    const dLon = toRad(lon2-lon1);
+    const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+    const c = 2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R*c;
 }
 
-// ---------------- PiP ----------------
-function setupPiPButton(){
-    pipToggle.addEventListener('click',async()=>{
-        if(!document.pictureInPictureEnabled){alert('PiP not supported');return;}
-        try{
-            if(!pipStream){pipStream=pipCanvas.captureStream(25);pipVideo.srcObject=pipStream;await pipVideo.play();}
-            if(document.pictureInPictureElement){await document.exitPictureInPicture();pipToggle.textContent='Enable PiP';pipEnabled=false;}
-            else{await pipVideo.requestPictureInPicture();pipToggle.textContent='Disable PiP';pipEnabled=true;}
-        }catch(e){console.error('PiP error',e);}
+// --- Update radars ---
+function updateRadars(){
+    if(!currentPos) return;
+    const {lat,lng,heading} = currentPos;
+
+    // Filter radars within 10km
+    const nearby = radars.filter(r=>{
+        const d = distanceMeters(lat,lng,r.lat,r.lon);
+        return d<=10000;
+    });
+
+    // Remove old markers
+    if(map.radarMarkers) map.radarMarkers.forEach(m=>map.removeLayer(m));
+    map.radarMarkers=[];
+
+    nearby.forEach(r=>{
+        const marker = L.circle([r.lat,r.lon],{
+            radius:50,
+            color:r.flg===1?'#00ff00':'#ff0000',
+            weight:2,
+            opacity:0.7
+        }).addTo(map);
+        map.radarMarkers.push(marker);
+
+        // Alert if within 1km ahead
+        const d = distanceMeters(lat,lng,r.lat,r.lon);
+        if(d<1000 && Date.now()-alertCooldown>5000){
+            showRadarAlert(r,d);
+            alertCooldown = Date.now();
+        }
     });
 }
 
-function drawPiP(kmh){
-    const ctx=pipCtx,w=pipCanvas.width,h=pipCanvas.height;
-    ctx.clearRect(0,0,w,h); ctx.fillStyle='#071021'; ctx.fillRect(0,0,w,h);
-    ctx.font='26px Inter, Arial'; ctx.fillStyle='#00e5ff';
-    if(activeAvgZone && activeAvgZone.flg===1){ctx.fillText(`${kmh} km/h`,50,50); ctx.fillText('AVG ZONE',50,90);}
-    else{ctx.fillText(`${kmh} km/h`,50,100);}
-    if(!pipInterval){pipInterval=setInterval(()=>drawPiP(lastSpeed),200);}
+// --- Show radar alert ---
+function showRadarAlert(radar,d){
+    const distanceText = `${Math.round(d)} m`;
+    alertText.textContent = `🚨 Radar ahead! ${distanceText}`;
+    alertPopup.classList.add('show');
+
+    if(chime){
+        chime.currentTime=0;
+        const p=chime.play();
+        if(p && typeof p.then==='function') p.catch(()=>{});
+    }
+
+    // Auto-hide after 4s
+    setTimeout(()=>alertPopup.classList.remove('show'),4000);
 }
 
-// ---------------- ADMIN ----------------
-let adminClicks=0;
-document.addEventListener('click',()=>{
-    adminClicks++; if(adminClicks===3){alert('Admin test alert!'); adminClicks=0;}
-});
+// --- Update average speed zones ---
+function updateAvgZones(){
+    if(!currentPos) return;
+    const {lat,lng,speedMps} = currentPos;
+    const kmh = speedMps ? Math.round(speedMps*3.6) : lastSpeed;
 
-// ---------------- INIT ----------------
-async function init(){await loadData();initMap();setupPiPButton();startGeolocation();noSleep.enable();}
+    let active=null;
+    avgZones.forEach(z=>{
+        const total = distanceMeters(z.start.lat,z.start.lon,z.end.lat,z.end.lon);
+        const distToStart = distanceMeters(z.start.lat,z.start.lon,lat,lng);
+        const distToEnd = distanceMeters(z.end.lat,z.end.lon,lat,lng);
+        const gap = Math.abs(distToStart+distToEnd-total);
+        if(gap<60 && distToStart<=total+30) active={z,total,distToStart};
+    });
+
+    if(active){
+        activeAvgZone=active.z;
+        const pct=Math.min(1,Math.max(0,active.distToStart/active.total));
+        showAvgZone(active.z,pct,kmh);
+    }else{
+        hideAvgZone();
+        activeAvgZone=null;
+    }
+}
+
+// --- Show average speed progress ---
+function showAvgZone(zone,pct,kmh){
+    avgZoneBar.style.display='flex';
+    avgSpeedVal.textContent=kmh;
+    zoneLimitVal.textContent=zone.limit;
+
+    const percent=Math.round(pct*100);
+    progressFill.style.width=`${percent}%`;
+    carMarker.style.left=`${percent}%`;
+
+    const over=kmh-zone.limit;
+    let fillBg;
+    if(over<=0) fillBg='linear-gradient(90deg,rgba(0,229,255,0.2),rgba(0,229,255,0.6))';
+    else {
+        const r=Math.min(255,Math.round((over/zone.limit)*255*1.4));
+        const g=Math.max(0,200-Math.round((over/zone.limit)*200));
+        fillBg=`linear-gradient(90deg,rgba(${r},${g},60,0.25),rgba(${r},${g},60,0.7))`;
+    }
+    progressFill.style.background=fillBg;
+}
+
+function hideAvgZone(){
+    avgZoneBar.style.display='none';
+}
+
+// --- PiP rendering ---
+function drawPiP(kmh=0){
+    const ctx=pipCtx,w=pipCanvas.width,h=pipCanvas.height;
+    ctx.clearRect(0,0,w,h);
+    ctx.fillStyle='#071021';
+    ctx.fillRect(0,0,w,h);
+
+    // Show speed only until near radar
+    let showAlertCard=false;
+    if(activeAvgZone || (radars.some(r=>{
+        if(!currentPos) return false;
+        const d=distanceMeters(currentPos.lat,currentPos.lng,r.lat,r.lon);
+        return d<1000;
+    }))) showAlertCard=true;
+
+    if(showAlertCard){
+        roundRect(ctx,20,50,w-40,h-100,14,'#0b2a33');
+        ctx.font='26px Inter, Arial';
+        ctx.fillStyle='#00e5ff';
+        ctx.fillText(`${kmh} km/h`,50,100);
+    }
+}
+
+// --- Rounded rect helper ---
+function roundRect(ctx,x,y,width,height,radius,fillStyle){
+    ctx.beginPath();
+    ctx.moveTo(x+radius,y);
+    ctx.lineTo(x+width-radius,y);
+    ctx.quadraticCurveTo(x+width,y,x+width,y+radius);
+    ctx.lineTo(x+width,y+height-radius);
+    ctx.quadraticCurveTo(x+width,y+height,x+width-radius,y+height);
+    ctx.lineTo(x+radius,y+height);
+    ctx.quadraticCurveTo(x,y+height,x,y+height-radius);
+    ctx.lineTo(x,y+radius);
+    ctx.quadraticCurveTo(x,y,x+radius,y);
+    ctx.closePath();
+    ctx.fillStyle=fillStyle;
+    ctx.fill();
+}
+
+// --- Canvas loop ---
+function startCanvasLoop(){
+    setInterval(()=>drawPiP(lastSpeed),300);
+}
+
+// --- Admin triple-tap menu ---
+function setupAdminMenu(){
+    let tapCount=0,lastTap=0;
+    document.body.addEventListener('touchend',e=>{
+        const now=Date.now();
+        if(now-lastTap<500) tapCount++;
+        else tapCount=1;
+        lastTap=now;
+
+        if(tapCount>=3){
+            showAdminMenu();
+            tapCount=0;
+        }
+    });
+}
+
+function showAdminMenu(){
+    const msg=prompt('Admin Menu:\n1. Test Radar Alert\n2. Test Avg Speed Alert\n3. Test PiP Speed');
+    if(!msg) return;
+    switch(msg){
+        case '1':
+            showRadarAlert({lat:0,lon:0,label:'Test Radar'},500);
+            break;
+        case '2':
+            showAvgZone({limit:50},{pct:0.5},60);
+            break;
+        case '3':
+            drawPiP(80);
+            break;
+    }
+}
+
+// --- Start ---
 init();
