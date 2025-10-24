@@ -2,38 +2,30 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RadarNav Mobile</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>RadarNav</title>
 <link rel="stylesheet" href="style.css">
+<script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY"></script>
 </head>
 <body>
 <div id="map"></div>
 
-<!-- Overlay UI -->
-<div id="uiOverlay">
-    <div id="speedDisplay">0 km/h</div>
-    <div id="alertPopup" class="hidden"><span id="alertText">Alert!</span></div>
-    <div id="avgZoneBar" class="hidden">
-        <span id="avgSpeedVal"></span> / <span id="zoneLimitVal"></span> km/h
-        <div id="progressContainer">
-            <div id="progressFill"></div>
-            <div id="carMarker"></div>
-        </div>
-    </div>
-    <button id="pipToggle">Enable PiP</button>
+<!-- Speed display + PiP overlay -->
+<div id="speedOverlay">
+  <div id="speedText">0 km/h</div>
+  <canvas id="pipCanvas" width="200" height="80"></canvas>
 </div>
 
-<video id="pipVideo" autoplay muted playsinline></video>
-<canvas id="pipCanvas" width="320" height="180"></canvas>
+<!-- Alert popup -->
+<div id="alertPopup" class="hidden"></div>
 
-<!-- Admin taps -->
-<div id="adminMenu">
-    <button id="testAlert">Test Alert</button>
-    <button id="testSpeed">Test Speed</button>
-    <button id="testZone">Test Avg Zone</button>
+<!-- Admin menu -->
+<div id="adminMenu" class="collapsed">
+  <button id="testRadar">Test Radar</button>
+  <button id="testAvg">Test Avg Speed</button>
+  <button id="testAlert">Test Alert</button>
 </div>
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script src="nosleep.js"></script>
 <script src="app.js"></script>
 </body>
