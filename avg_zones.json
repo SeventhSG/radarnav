@@ -1,0 +1,9 @@
+[
+  {
+    "id":"z1",
+    "start": { "lat":40.7345, "lng":-73.9380 },
+    "end":   { "lat":40.7390, "lng":-73.9420 },
+    "limit": 50,
+    "label":"Avg speed zone A"
+  }
+]
