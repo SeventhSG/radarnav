@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>RadarNav (PWA prototype)</title>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <div id="topbar">
+      <div id="speedDisplay">-- km/h</div>
+      <button id="pipToggle">Enable PiP</button>
+    </div>
+
+    <div id="map"></div>
+
+    <!-- Popup area (rounded card style) -->
+    <div id="alertPopup" class="hidden">
+      <div id="alertIcon">🚨</div>
+      <div id="alertText">Radar ahead — 300 m</div>
+    </div>
+
+    <!-- Average zone progress bar -->
+    <div id="avgZoneBar" class="hidden">
+      <div id="avgZoneInfo">
+        <div id="avgSpeeds">
+          <div>Avg: <span id="avgSpeedVal">0</span> km/h</div>
+          <div>Limit: <span id="zoneLimitVal">0</span> km/h</div>
+        </div>
+        <div id="progressWrap">
+          <div id="progressLine">
+            <div id="carMarker">🚗</div>
+            <div id="progressFill"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hidden video for PiP -->
+    <video id="pipVideo" playsinline muted style="display:none"></video>
+    <canvas id="pipCanvas" width="400" height="200" style="display:none"></canvas>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
