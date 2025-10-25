@@ -1,8 +1,9 @@
 /**
- * app.js - Enhanced RadarNav with 5-tap admin and sound testing
+ * app.js - RadarNav with Admin Button in Top Bar
  * Changes:
- * - Admin panel now requires 5 taps instead of 3
- * - Added sound test buttons in admin panel
+ * - Removed 5-tap admin panel
+ * - Added admin button in top bar
+ * - Simplified admin panel toggle
  */
 
 /* ========== CONFIG ========== */
@@ -26,7 +27,6 @@ const CONFIG = {
   REPORT_EXPIRY_HOURS: 12,
   REPORT_EXTENSION_HOURS: 1,
   MAX_NEGATIVE_VERIFICATIONS: 3,
-  ADMIN_TAP_COUNT: 5, // Changed from 3 to 5
   DEBUG: true
 };
 
@@ -47,6 +47,7 @@ const DOM = {
   pipToggle: $('toggle-pip'),
   centerBtn: $('center-btn'),
   adminPanel: $('admin-panel'),
+  adminToggle: $('admin-toggle'),
   reloadBtn: $('reload-btn'),
   clearAlertsBtn: $('clear-alerts'),
   popupContainer: $('popup-container'),
@@ -85,11 +86,11 @@ let pipCtx = null;
 let pipRAF = null;
 let pipEnabled = false;
 let noSleep = window.noSleep || null;
-let adminTap = { count: 0, last: 0 };
 let avgState = { active: null, samples: [], started: 0 };
 let autoCenterEnabled = true;
 let currentTheme = 'dark';
 let currentVerificationReport = null;
+let adminPanelVisible = false;
 
 /* ========== AUDIO ASSETS ========== */
 const AUDIO = {
@@ -185,49 +186,6 @@ function initSoundTesting() {
       }
     });
   }
-
-  // Test full alert sequence (chime + specific sound)
-  if (DOM.testFullAlert) {
-    DOM.testFullAlert.addEventListener('click', () => {
-      testFullAlertSequence();
-    });
-  }
-}
-
-// Test full alert sequence with chime
-function testFullAlertSequence(type = 'police') {
-  if (AUDIO.chime) {
-    AUDIO.chime.play().then(() => {
-      setTimeout(() => {
-        let specificAudio = null;
-        let alertName = '';
-        
-        switch(type) {
-          case 'police':
-            specificAudio = AUDIO.police;
-            alertName = 'Police';
-            break;
-          case 'construction':
-            specificAudio = AUDIO.construction;
-            alertName = 'Construction';
-            break;
-          case 'camera':
-            specificAudio = AUDIO.cameraMsg;
-            alertName = 'Camera';
-            break;
-          case 'avg':
-            specificAudio = AUDIO.avgMsg;
-            alertName = 'Average Zone';
-            break;
-        }
-        
-        if (specificAudio) {
-          specificAudio.play().catch(console.warn);
-          pushToast(`Playing ${alertName} alert sequence`, 'success', 1500);
-        }
-      }, 500);
-    }).catch(console.warn);
-  }
 }
 
 /* ========== THEME MANAGEMENT ========== */
@@ -302,6 +260,41 @@ function setAutoCenter(enabled) {
       DOM.centerBtn.classList.remove('auto-center-active');
     }
   }
+}
+
+/* ========== ADMIN PANEL ========== */
+function initAdminPanel() {
+  // Admin toggle button
+  if (DOM.adminToggle) {
+    DOM.adminToggle.addEventListener('click', toggleAdminPanel);
+  }
+  
+  // Close admin panel when clicking outside
+  document.addEventListener('click', (e) => {
+    if (adminPanelVisible && 
+        !DOM.adminPanel.contains(e.target) && 
+        !DOM.adminToggle.contains(e.target)) {
+      hideAdminPanel();
+    }
+  });
+}
+
+function toggleAdminPanel() {
+  if (adminPanelVisible) {
+    hideAdminPanel();
+  } else {
+    showAdminPanel();
+  }
+}
+
+function showAdminPanel() {
+  DOM.adminPanel.classList.add('visible');
+  adminPanelVisible = true;
+}
+
+function hideAdminPanel() {
+  DOM.adminPanel.classList.remove('visible');
+  adminPanelVisible = false;
 }
 
 /* ========== REPORT SYSTEM ========== */
@@ -1037,39 +1030,6 @@ function initControls() {
     });
   }
 
-  // ADMIN PANEL - 5 TAPS (FIXED)
-  document.body.addEventListener('touchend', (e) => {
-    const t = now();
-    if (t - adminTap.last < 1000) adminTap.count++; 
-    else adminTap.count = 1;
-    
-    adminTap.last = t;
-    
-    // Show tap count feedback
-    if (adminTap.count > 1 && adminTap.count < CONFIG.ADMIN_TAP_COUNT) {
-      pushToast(`Admin: ${adminTap.count}/${CONFIG.ADMIN_TAP_COUNT} taps`, 'info', 800);
-    }
-    
-    if (adminTap.count >= CONFIG.ADMIN_TAP_COUNT) {
-      adminTap.count = 0;
-      // Toggle the collapsed class
-      if (DOM.adminPanel.classList.contains('collapsed')) {
-        DOM.adminPanel.classList.remove('collapsed');
-        pushToast('Admin panel opened', 'success');
-      } else {
-        DOM.adminPanel.classList.add('collapsed');
-        pushToast('Admin panel closed', 'info');
-      }
-    }
-  });
-
-  // Close admin panel when clicking outside (optional)
-  document.addEventListener('click', (e) => {
-    if (DOM.adminPanel && !DOM.adminPanel.contains(e.target) && !DOM.adminPanel.classList.contains('collapsed')) {
-      DOM.adminPanel.classList.add('collapsed');
-    }
-  });
-
   // Admin buttons
   if (DOM.reloadBtn) {
     DOM.reloadBtn.addEventListener('click', async () => {
@@ -1132,6 +1092,7 @@ async function boot() {
     initMap();
     initPiP();
     initControls();
+    initAdminPanel();
     initReportSystem();
     startTracking();
     
