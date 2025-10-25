@@ -1,236 +1,73 @@
-/* RESET */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  user-select: none;
-  -webkit-tap-highlight-color: transparent;
-  font-family: 'Poppins', sans-serif;
-}
+/* style.css - UI for RadarNav
+   Mobile-first, modern glass look
+*/
+
+/* reset */
+*{box-sizing:border-box;margin:0;padding:0}
+html,body,#map{height:100%;width:100%}
+body{font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;background:#0b1220;overflow:hidden;color:#fff}
 
 /* MAP */
-#map {
-  width: 100vw;
-  height: 100vh;
-  position: fixed;
-  inset: 0;
+#map{position:fixed;left:0;top:0;width:100%;height:100%;z-index:1}
+
+/* top bar */
+#top-bar{
+  position:fixed;left:50%;transform:translateX(-50%);
+  top:10px;width:calc(100% - 28px);max-width:640px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 14px;border-radius:12px;background:rgba(8,12,20,0.6);
+  backdrop-filter: blur(8px);z-index:1100;box-shadow:0 8px 24px rgba(0,0,0,0.45)
 }
+#top-bar h1{font-size:16px;color:#e6f7ff}
 
-/* TOP BAR */
-#top-bar {
-  position: fixed;
-  top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: calc(100% - 40px);
-  max-width: 400px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: rgba(30, 30, 30, 0.75);
-  color: white;
-  border-radius: 12px;
-  padding: 8px 14px;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+/* speed widget */
+#speed-display{
+  position:fixed;right:18px;bottom:22px;z-index:1100;
+  width:110px;height:110px;border-radius:50%;
+  background:linear-gradient(180deg, rgba(0,12,20,0.8), rgba(8,20,30,0.6));
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  box-shadow:0 8px 24px rgba(0,0,0,0.6);backdrop-filter: blur(6px);
 }
+#speed-value{font-size:36px;font-weight:700;color:#00e5ff}
+#speed-unit{font-size:12px;color:rgba(255,255,255,0.8)}
 
-#top-bar h1 {
-  font-size: 18px;
-  letter-spacing: 0.5px;
-}
+/* alert overlay */
+#alert-overlay{position:fixed;left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;z-index:1200;pointer-events:none;opacity:0;transition:opacity .28s}
+#alert-overlay.hidden{pointer-events:none;opacity:0}
+#alert-box{pointer-events:auto;background:linear-gradient(135deg,#ff7a7a,#c90000);color:#fff;padding:18px 28px;border-radius:16px;text-align:center;box-shadow:0 14px 38px rgba(0,0,0,0.5)}
+#alert-box i{font-size:36px;display:block;margin-bottom:6px}
+#alert-text{font-size:18px;font-weight:700}
 
-#menu-toggle {
-  border: none;
-  background: none;
-  color: white;
-  font-size: 22px;
-}
+/* avg zone bar */
+#avgZoneBar{position:fixed;left:50%;transform:translateX(-50%);bottom:140px;width:86%;max-width:760px;height:36px;background:rgba(12,20,30,0.55);border-radius:20px;overflow:hidden;display:flex;align-items:center;padding:6px 10px;z-index:1100}
+#progressFill{height:100%;width:0%;background:linear-gradient(90deg,#00e5ff,#0a3);transition:width .18s linear}
+#carMarker{position:absolute;width:10px;height:36px;background:#ffd166;border-radius:6px;left:0;top:0;transform:translateX(-50%)}
+#avgSpeedVal, #zoneLimitVal{position:absolute;top:-26px;font-size:13px;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,0.5)}
 
-/* ALERT OVERLAY */
-#alert-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: rgba(15, 15, 15, 0.65);
-  z-index: 1000;
-  transition: opacity 0.3s ease;
-}
+/* admin panel */
+#admin-panel{position:fixed;left:12px;bottom:12px;background:rgba(16,20,26,0.7);padding:10px;border-radius:10px;z-index:1200;transform:translateY(180px);transition:transform .28s;backdrop-filter: blur(6px)}
+#admin-panel:not(.collapsed){transform:translateY(0)}
+#admin-panel h2{font-size:14px;margin-bottom:8px}
+#admin-panel button{display:block;width:100%;margin:6px 0;padding:8px;border-radius:8px;border:none;background:rgba(255,255,255,0.06);color:#fff}
 
-#alert-overlay.hidden {
-  opacity: 0;
-  pointer-events: none;
-}
+/* popup container */
+#popup-container{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:1300;display:flex;flex-direction:column;gap:8px}
+.popup{padding:8px 14px;border-radius:8px;background:rgba(0,0,0,0.7);color:#fff;box-shadow:0 10px 20px rgba(0,0,0,0.4);transition:opacity .28s}
+.popup.success{background:linear-gradient(90deg,#0acf60,#07b36a)}
+.popup.error{background:linear-gradient(90deg,#ff5f5f,#c92b2b)}
 
-#alert-box {
-  background: linear-gradient(145deg, #ff5f5f, #c70000);
-  color: white;
-  padding: 30px 40px;
-  border-radius: 20px;
-  text-align: center;
-  box-shadow: 0 10px 20px rgba(0,0,0,0.5);
-  animation: pulse 1.5s infinite;
-}
+/* user icon */
+.user-icon-wrapper{width:44px;height:44px}
+.user-icon{width:44px;height:44px;display:flex;align-items:center;justify-content:center}
+.car-arrow{width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-bottom:18px solid #00e5ff;filter: drop-shadow(0 2px 8px rgba(0,229,255,0.18))}
 
-#alert-box i {
-  font-size: 42px;
-  margin-bottom: 10px;
-}
+/* pip canvas hidden */
+#pipCanvas{display:none}
+#pipVideo{display:none}
 
-#alert-text {
-  font-size: 20px;
-  font-weight: 600;
-  margin-bottom: 12px;
-}
-
-#progress-bar {
-  width: 100%;
-  height: 8px;
-  background: rgba(255,255,255,0.2);
-  border-radius: 8px;
-  overflow: hidden;
-  display: none;
-}
-
-#progress-bar div {
-  height: 100%;
-  background: #fff;
-  width: 0%;
-  transition: width 0.2s linear;
-}
-
-@keyframes pulse {
-  0% { transform: scale(1); box-shadow: 0 0 15px #ff8080; }
-  50% { transform: scale(1.05); box-shadow: 0 0 25px #ff3030; }
-  100% { transform: scale(1); box-shadow: 0 0 15px #ff8080; }
-}
-
-/* SPEED DISPLAY */
-#speed-display {
-  position: fixed;
-  bottom: 70px;
-  right: 20px;
-  background: rgba(0, 0, 0, 0.7);
-  color: white;
-  border-radius: 50%;
-  width: 110px;
-  height: 110px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  font-weight: 600;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 8px 16px rgba(0,0,0,0.4);
-  z-index: 100;
-  animation: fadeIn 1s ease;
-}
-
-#speed-value {
-  font-size: 36px;
-  line-height: 1;
-}
-
-#speed-unit {
-  font-size: 14px;
-  opacity: 0.8;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: scale(0.9); }
-  to { opacity: 1; transform: scale(1); }
-}
-
-/* ADMIN PANEL */
-#admin-panel {
-  position: fixed;
-  bottom: 10px;
-  left: 10px;
-  width: 200px;
-  background: rgba(30,30,30,0.8);
-  color: white;
-  border-radius: 10px;
-  padding: 10px;
-  transition: transform 0.3s ease;
-  transform: translateY(85%);
-  z-index: 200;
-  backdrop-filter: blur(6px);
-}
-
-#admin-panel h2 {
-  font-size: 16px;
-  text-align: center;
-  margin-bottom: 6px;
-}
-
-#admin-panel button {
-  width: 100%;
-  margin: 4px 0;
-  padding: 8px;
-  border: none;
-  border-radius: 6px;
-  background: rgba(255,255,255,0.1);
-  color: white;
-  font-size: 14px;
-  transition: 0.2s;
-}
-
-#admin-panel button:hover {
-  background: rgba(255,255,255,0.25);
-}
-
-/* COLLAPSED STATE */
-#admin-panel.collapsed {
-  transform: translateY(180px);
-}
-
-/* POPUP CONTAINER */
-#popup-container {
-  position: fixed;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  z-index: 1500;
-}
-
-.popup {
-  background: rgba(0,0,0,0.8);
-  color: white;
-  padding: 10px 18px;
-  margin-top: 6px;
-  border-radius: 8px;
-  backdrop-filter: blur(6px);
-  animation: slideDown 0.5s ease;
-}
-
-.popup.error { background: rgba(255, 0, 0, 0.8); }
-.popup.success { background: rgba(0, 180, 0, 0.8); }
-
-@keyframes slideDown {
-  from { opacity: 0; transform: translateY(-20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* USER MARKER */
-.user-icon {
-  width: 24px;
-  height: 24px;
-  transform: rotate(0deg);
-}
-
-.car-arrow {
-  width: 0;
-  height: 0;
-  border-left: 12px solid transparent;
-  border-right: 12px solid transparent;
-  border-bottom: 20px solid #00bfff;
-  filter: drop-shadow(0 0 4px #00bfff);
+/* small responsive tweaks */
+@media (max-width:420px){
+  #speed-display{right:12px;bottom:18px;width:96px;height:96px}
+  #speed-value{font-size:30px}
+  #avgZoneBar{bottom:120px}
 }
