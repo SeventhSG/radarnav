@@ -2,17 +2,17 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <title>RadarNav — Radar & Speed Detector</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <title>RadarNav</title>
 
-  <!-- Leaflet CSS & JS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <!-- NoSleep (optional, include CDN) -->
+  <!-- NoSleep (optional but recommended) -->
   <script src="https://cdn.jsdelivr.net/npm/nosleep.js@0.12.0/dist/NoSleep.min.js"></script>
 
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
   <!-- Map -->
@@ -25,6 +25,9 @@
       <button id="toggle-pip">Enable PiP</button>
     </div>
   </div>
+
+  <!-- Center button -->
+  <button id="center-btn">Center</button>
 
   <!-- Alert overlay -->
   <div id="alert-overlay" class="hidden" style="opacity:0">
@@ -42,7 +45,7 @@
     <div id="avgSpeedVal"></div>
   </div>
 
-  <!-- Speed display (HUD) -->
+  <!-- Speed display -->
   <div id="speed-display">
     <div id="speed-value">0</div>
     <div id="speed-unit">km/h</div>
@@ -58,11 +61,11 @@
   <!-- Popups -->
   <div id="popup-container"></div>
 
-  <!-- PiP video & canvas -->
-  <video id="pipVideo" playsinline muted style="display:none"></video>
-  <canvas id="pipCanvas" width="360" height="200" style="display:none"></canvas>
+  <!-- PiP hidden video + canvas (used by app.js) -->
+  <video id="pipVideo" playsinline muted></video>
+  <canvas id="pipCanvas" width="360" height="180"></canvas>
 
-  <!-- App script (big file) -->
+  <!-- App -->
   <script src="app.js"></script>
 </body>
 </html>
