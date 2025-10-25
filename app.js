@@ -9,7 +9,7 @@
 
 /* ========== CONFIG ========== */
 const CONFIG = {
-  ORS_API_KEY: '', // set your OpenRouteService key to enable road snapping (optional)
+  ORS_API_KEY: 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImE0YzczYmZlMzA5NzRkOTc4OWI4OGU3YTcyNzY4MjdjIiwiaCI6Im11cm11cjY0In0=', // set your OpenRouteService key to enable road snapping (optional)
   CAMERA_VISIBLE_M: 10000,    // 10 km marker visibility radius
   ALERT_DISTANCE_M: 1000,     // 1 km approach to alert
   ALERT_THROTTLE_MS: 5000,    // per-camera throttle
