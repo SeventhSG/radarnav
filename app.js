@@ -1,14 +1,14 @@
 /**
  * app.js - RadarNav with Admin Button in Top Bar
  * Changes:
- * - Removed 5-tap admin panel
- * - Added admin button in top bar
+ * - Removed 5-tap admin panel completely
+ * - Fixed admin button functionality
  * - Simplified admin panel toggle
  */
 
 /* ========== CONFIG ========== */
 const CONFIG = {
-  ORS_API_KEY: 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6ImE0YzczYmZlMzA5NzRkOTc4OWI4OGU3YTcyNzY4MjdjIiwiaCI6Im11cm11cjY0In0=',
+  ORS_API_KEY: '',
   CAMERA_VISIBLE_M: 10000,
   ALERT_DISTANCE_M: 1000,
   ALERT_THROTTLE_MS: 5000,
@@ -272,6 +272,7 @@ function initAdminPanel() {
   // Close admin panel when clicking outside
   document.addEventListener('click', (e) => {
     if (adminPanelVisible && 
+        DOM.adminPanel && 
         !DOM.adminPanel.contains(e.target) && 
         !DOM.adminToggle.contains(e.target)) {
       hideAdminPanel();
@@ -288,13 +289,19 @@ function toggleAdminPanel() {
 }
 
 function showAdminPanel() {
-  DOM.adminPanel.classList.add('visible');
-  adminPanelVisible = true;
+  if (DOM.adminPanel) {
+    DOM.adminPanel.classList.add('visible');
+    adminPanelVisible = true;
+    pushToast('Admin panel opened', 'success');
+  }
 }
 
 function hideAdminPanel() {
-  DOM.adminPanel.classList.remove('visible');
-  adminPanelVisible = false;
+  if (DOM.adminPanel) {
+    DOM.adminPanel.classList.remove('visible');
+    adminPanelVisible = false;
+    pushToast('Admin panel closed', 'info');
+  }
 }
 
 /* ========== REPORT SYSTEM ========== */
