@@ -21,7 +21,8 @@
   <!-- Top bar -->
   <div id="top-bar">
     <h1>RadarNav</h1>
-    <div style="display:flex;gap:8px;align-items:center">
+    <div class="top-bar-buttons">
+      <button id="admin-toggle" title="Admin Panel">Admin</button>
       <button id="theme-toggle" title="Toggle dark/light mode">🌙</button>
       <button id="toggle-pip">Enable PiP</button>
     </div>
@@ -76,9 +77,9 @@
     <div id="speed-unit">km/h</div>
   </div>
 
-  <!-- Admin panel (5 taps to toggle) -->
-  <div id="admin-panel" class="collapsed">
-    <h2>Admin</h2>
+  <!-- Admin panel -->
+  <div id="admin-panel">
+    <h2>Admin Panel</h2>
     <button id="reload-btn">Reload Data</button>
     <button id="clear-alerts">Clear Alerts</button>
     <button id="toggle-auto-center">Auto-center: Off</button>
