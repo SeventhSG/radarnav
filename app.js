@@ -1,11 +1,11 @@
 /**
- * app.js - Fixed RadarNav
- * Fixed issues:
- * - Map loading properly
- * - GPS tracking working
- * - PiP functionality restored
- * - Center button working
- * - Theme switching without breaking functionality
+ * app.js - Enhanced RadarNav with Report System
+ * Added features:
+ * - Non-selectable text and emojis
+ * - Better looking PiP button
+ * - Report system for police/construction
+ * - Verification system with timing
+ * - Audio alerts for reports
  */
 
 /* ========== CONFIG ========== */
@@ -23,6 +23,12 @@ const CONFIG = {
   MIN_MOVE_TO_REFRESH: 25,
   MAX_MARKERS: 1200,
   AUTO_CENTER_ZOOM: 16,
+  REPORT_VISIBLE_M: 10000,
+  REPORT_ALERT_DISTANCE: 800,
+  VERIFICATION_DISTANCE: 300,
+  REPORT_EXPIRY_HOURS: 12,
+  REPORT_EXTENSION_HOURS: 1,
+  MAX_NEGATIVE_VERIFICATIONS: 3,
   DEBUG: true
 };
 
@@ -48,17 +54,25 @@ const DOM = {
   popupContainer: $('popup-container'),
   topBar: $('top-bar'),
   themeToggle: $('theme-toggle'),
-  autoCenterBtn: $('toggle-auto-center')
+  autoCenterBtn: $('toggle-auto-center'),
+  reportButton: $('report-button'),
+  reportMenu: $('report-menu'),
+  verificationModal: $('verification-modal'),
+  verificationText: $('verification-text'),
+  clearReportsBtn: $('clear-reports')
 };
 
 /* ========== STATE ========== */
 let map, userMarker, accuracyCircle;
 let radars = [];
 let avgZones = [];
+let reports = [];
 let visibleMarkers = new Map();
+let visibleReportMarkers = new Map();
 let lastPos = null;
 let lastMarkerRefreshPos = null;
 let perCameraLastAlert = new Map();
+let perReportLastAlert = new Map();
 let lastGlobalAlert = 0;
 let lastSpeed = 0;
 let pipStream = null;
@@ -70,13 +84,16 @@ let adminTap = { count: 0, last: 0 };
 let avgState = { active: null, samples: [], started: 0 };
 let autoCenterEnabled = true;
 let currentTheme = 'dark';
+let currentVerificationReport = null;
 
 /* ========== AUDIO ASSETS ========== */
 const AUDIO = {
   chime: tryCreateAudio('assets/chime.mp3'),
   beep: tryCreateAudio('assets/beep_beep.mp3'),
   cameraMsg: tryCreateAudio('assets/camera_ahead.mp3'),
-  avgMsg: tryCreateAudio('assets/avg_zone_ahead.mp3')
+  avgMsg: tryCreateAudio('assets/avg_zone_ahead.mp3'),
+  police: tryCreateAudio('assets/police.mp3'),
+  construction: tryCreateAudio('assets/construction.mp3')
 };
 
 function tryCreateAudio(path){
@@ -126,23 +143,20 @@ function updateThemeButton() {
 function initMap() {
   console.log('Initializing map...');
   
-  // Simple map initialization - no theme layers for now
   map = L.map(DOM.map, { zoomControl: true }).setView([39.0, 35.0], 12);
   
-  // Use standard tile layer
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { 
     attribution: '&copy; OpenStreetMap & CARTO' 
   }).addTo(map);
 
-  // User marker
   const userHtml = '<div class="user-icon"><div class="car-arrow" style="transform: rotate(0deg)"></div></div>';
   const userIcon = L.divIcon({ className:'user-icon-wrapper', html: userHtml, iconSize: [44,44], iconAnchor: [22,22] });
   userMarker = L.marker([39.0,35.0], { icon: userIcon, interactive: false }).addTo(map);
   accuracyCircle = L.circle([39.0,35.0], { radius: 0, color:'#00e5ff', opacity:0.15 }).addTo(map);
 
-  // Layers for markers
   map._avgLayer = L.layerGroup().addTo(map);
   map._radarLayer = L.layerGroup().addTo(map);
+  map._reportLayer = L.layerGroup().addTo(map);
   
   console.log('Map initialized successfully');
 }
@@ -164,6 +178,294 @@ function setAutoCenter(enabled) {
     } else {
       DOM.centerBtn.classList.remove('auto-center-active');
     }
+  }
+}
+
+/* ========== REPORT SYSTEM ========== */
+function initReportSystem() {
+  // Load reports from localStorage
+  loadReports();
+  
+  // Report button click
+  if (DOM.reportButton) {
+    DOM.reportButton.addEventListener('click', toggleReportMenu);
+  }
+  
+  // Report options
+  document.querySelectorAll('.report-option').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const type = e.currentTarget.dataset.type;
+      createReport(type);
+      hideReportMenu();
+    });
+  });
+  
+  // Verification buttons
+  document.querySelectorAll('.verification-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const isConfirmed = e.currentTarget.classList.contains('yes');
+      handleVerification(isConfirmed);
+    });
+  });
+  
+  // Close report menu when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!DOM.reportMenu.contains(e.target) && !DOM.reportButton.contains(e.target)) {
+      hideReportMenu();
+    }
+  });
+  
+  // Start report cleanup interval
+  setInterval(cleanupExpiredReports, 60000); // Check every minute
+}
+
+function toggleReportMenu() {
+  if (DOM.reportMenu.classList.contains('visible')) {
+    hideReportMenu();
+  } else {
+    showReportMenu();
+  }
+}
+
+function showReportMenu() {
+  DOM.reportMenu.classList.add('visible');
+}
+
+function hideReportMenu() {
+  DOM.reportMenu.classList.remove('visible');
+}
+
+function createReport(type) {
+  if (!lastPos) {
+    pushToast('Wait for GPS location', 'error');
+    return;
+  }
+  
+  const report = {
+    id: generateId(),
+    type: type,
+    lat: lastPos.lat,
+    lon: lastPos.lon,
+    createdAt: Date.now(),
+    expiresAt: Date.now() + (CONFIG.REPORT_EXPIRY_HOURS * 60 * 60 * 1000),
+    verifiedAt: Date.now(),
+    positiveVerifications: 1,
+    negativeVerifications: 0,
+    verifiedBy: [generateUserHash()]
+  };
+  
+  reports.push(report);
+  saveReports();
+  refreshReportMarkers();
+  
+  pushToast(`${type === 'police' ? 'Police' : 'Construction'} reported`, 'success');
+}
+
+function generateId() {
+  return 'report_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+}
+
+function generateUserHash() {
+  // Simple user identifier (not perfect but works for demo)
+  return 'user_' + Math.random().toString(36).substr(2, 6);
+}
+
+function loadReports() {
+  try {
+    const saved = localStorage.getItem('radarnav-reports');
+    if (saved) {
+      reports = JSON.parse(saved);
+      
+      // Filter out expired reports
+      const now = Date.now();
+      reports = reports.filter(report => report.expiresAt > now);
+      
+      refreshReportMarkers();
+    }
+  } catch (e) {
+    console.warn('Failed to load reports:', e);
+    reports = [];
+  }
+}
+
+function saveReports() {
+  try {
+    localStorage.setItem('radarnav-reports', JSON.stringify(reports));
+  } catch (e) {
+    console.warn('Failed to save reports:', e);
+  }
+}
+
+function refreshReportMarkers() {
+  const layer = map._reportLayer;
+  if (!layer) return;
+  
+  // Clear existing markers
+  visibleReportMarkers.forEach(marker => layer.removeLayer(marker));
+  visibleReportMarkers.clear();
+  
+  if (!lastPos) return;
+  
+  reports.forEach(report => {
+    const distance = haversine(lastPos.lat, lastPos.lon, report.lat, report.lon);
+    if (distance <= CONFIG.REPORT_VISIBLE_M) {
+      const color = report.type === 'police' ? '#4dabf7' : '#ffa94d';
+      const icon = report.type === 'police' ? '🚓' : '🚧';
+      
+      const marker = L.circleMarker([report.lat, report.lon], {
+        radius: 10,
+        fillColor: color,
+        color: '#fff',
+        weight: 2,
+        fillOpacity: 0.8
+      }).addTo(layer);
+      
+      marker.bindPopup(`
+        <div style="text-align:center;padding:8px;">
+          <div style="font-size:20px;margin-bottom:4px;">${icon}</div>
+          <strong>${report.type === 'police' ? 'Police Check' : 'Road Construction'}</strong><br>
+          <small>Reported ${formatTimeAgo(report.createdAt)}</small><br>
+          <small>Verified: ${report.positiveVerifications} times</small>
+        </div>
+      `);
+      
+      visibleReportMarkers.set(report.id, marker);
+    }
+  });
+}
+
+function formatTimeAgo(timestamp) {
+  const seconds = Math.floor((Date.now() - timestamp) / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+function detectApproachingReports(lat, lon, heading) {
+  const nowTs = now();
+  
+  reports.forEach(report => {
+    // Skip if recently alerted for this report
+    const lastAlert = perReportLastAlert.get(report.id) || 0;
+    if (nowTs - lastAlert < CONFIG.ALERT_THROTTLE_MS) return;
+    
+    const distance = haversine(lat, lon, report.lat, report.lon);
+    if (distance > CONFIG.REPORT_ALERT_DISTANCE) return;
+    
+    // Check if report is ahead of us
+    const brg = bearing(lat, lon, report.lat, report.lon);
+    const diff = angleDiff(brg, heading);
+    if (diff > CONFIG.AHEAD_ANGLE) return;
+    
+    perReportLastAlert.set(report.id, nowTs);
+    fireReportAlert(report, Math.round(distance));
+  });
+}
+
+function fireReportAlert(report, distM) {
+  const label = report.type === 'police' ? 'Police reported' : 'Construction reported';
+  const message = `${label} — ${distM} m`;
+  showCenteredAlert(message);
+
+  // Play chime then specific audio
+  if (AUDIO.chime) {
+    AUDIO.chime.play().then(() => {
+      setTimeout(() => {
+        const audio = report.type === 'police' ? AUDIO.police : AUDIO.construction;
+        if (audio) audio.play().catch(console.warn);
+      }, 500);
+    }).catch(console.warn);
+  }
+}
+
+function checkReportVerification(lat, lon) {
+  if (currentVerificationReport) return; // Already showing a verification
+  
+  reports.forEach(report => {
+    const distance = haversine(lat, lon, report.lat, report.lon);
+    if (distance <= CONFIG.VERIFICATION_DISTANCE) {
+      // Check if user already verified this report
+      const userHash = generateUserHash();
+      if (!report.verifiedBy.includes(userHash)) {
+        showVerificationModal(report);
+        return;
+      }
+    }
+  });
+}
+
+function showVerificationModal(report) {
+  currentVerificationReport = report;
+  DOM.verificationText.textContent = `Is the ${report.type === 'police' ? 'police check' : 'road construction'} still present?`;
+  DOM.verificationModal.classList.add('visible');
+}
+
+function hideVerificationModal() {
+  DOM.verificationModal.classList.remove('visible');
+  currentVerificationReport = null;
+}
+
+function handleVerification(isConfirmed) {
+  if (!currentVerificationReport) return;
+  
+  const report = currentVerificationReport;
+  const userHash = generateUserHash();
+  
+  if (isConfirmed) {
+    // Extend report lifetime
+    report.expiresAt = Date.now() + (CONFIG.REPORT_EXTENSION_HOURS * 60 * 60 * 1000);
+    report.positiveVerifications++;
+    report.verifiedAt = Date.now();
+    pushToast('Report confirmed - extended by 1 hour', 'success');
+  } else {
+    report.negativeVerifications++;
+    pushToast('Report marked as gone', 'error');
+    
+    // Remove if too many negative verifications
+    if (report.negativeVerifications >= CONFIG.MAX_NEGATIVE_VERIFICATIONS) {
+      removeReport(report.id);
+      pushToast('Report removed - multiple users confirmed it\'s gone', 'info');
+      hideVerificationModal();
+      return;
+    }
+  }
+  
+  // Mark user as having verified this report
+  if (!report.verifiedBy.includes(userHash)) {
+    report.verifiedBy.push(userHash);
+  }
+  
+  saveReports();
+  refreshReportMarkers();
+  hideVerificationModal();
+}
+
+function removeReport(reportId) {
+  reports = reports.filter(r => r.id !== reportId);
+  
+  // Remove from map
+  const marker = visibleReportMarkers.get(reportId);
+  if (marker) {
+    map._reportLayer.removeLayer(marker);
+    visibleReportMarkers.delete(reportId);
+  }
+  
+  saveReports();
+}
+
+function cleanupExpiredReports() {
+  const now = Date.now();
+  const expiredCount = reports.filter(report => report.expiresAt <= now).length;
+  
+  if (expiredCount > 0) {
+    reports = reports.filter(report => report.expiresAt > now);
+    saveReports();
+    refreshReportMarkers();
+    console.log(`Cleaned up ${expiredCount} expired reports`);
   }
 }
 
@@ -345,11 +647,18 @@ function startTracking() {
                          haversine(lastMarkerRefreshPos.lat, lastMarkerRefreshPos.lon, lat, lon) >= CONFIG.MIN_MOVE_TO_REFRESH;
       if (needRefresh) {
         refreshMarkers(lat, lon);
+        refreshReportMarkers();
         lastMarkerRefreshPos = { lat, lon };
       }
       
       // Check for cameras
       detectApproachingCameras(lat, lon, heading || 0);
+      
+      // Check for reports
+      detectApproachingReports(lat, lon, heading || 0);
+      
+      // Check for report verification
+      checkReportVerification(lat, lon);
       
       // Check for average zones
       checkAverageZones(lat, lon, speedKmh);
@@ -458,7 +767,7 @@ function avgStateEnter(zone) {
   avgState.active = zone;
   avgState.samples = [];
   avgState.started = now();
-  DOM.avgZoneBar.classList.remove('hidden');
+  DOM.avgZoneBar.classList.add('visible');
   DOM.zoneLimitVal.textContent = zone.limit + ' km/h';
 }
 
@@ -472,7 +781,7 @@ function avgStateExit() {
   
   avgState.active = null;
   avgState.samples = [];
-  DOM.avgZoneBar.classList.add('hidden');
+  DOM.avgZoneBar.classList.remove('visible');
 }
 
 function avgStateUpdate(kmh, pct) {
@@ -595,6 +904,16 @@ function initControls() {
     });
   }
 
+  // Clear reports button
+  if (DOM.clearReportsBtn) {
+    DOM.clearReportsBtn.addEventListener('click', () => {
+      reports = [];
+      saveReports();
+      refreshReportMarkers();
+      pushToast('All reports cleared', 'success');
+    });
+  }
+
   // Admin triple-tap
   document.body.addEventListener('touchend', (e) => {
     const t = now();
@@ -668,6 +987,7 @@ async function boot() {
     initMap();
     initPiP();
     initControls();
+    initReportSystem();
     startTracking();
     
     // Enable auto-center by default
