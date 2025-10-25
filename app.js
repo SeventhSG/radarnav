@@ -1,9 +1,10 @@
 /**
- * app.js - RadarNav with Admin Button in Top Bar
- * Changes:
- * - Removed 5-tap admin panel completely
- * - Fixed admin button functionality
- * - Simplified admin panel toggle
+ * app.js - RadarNav with Search and Trip System
+ * Added features:
+ * - Search bubble with destination input
+ * - Route selection with time estimates
+ * - Trip tracking with countdown
+ * - Cancel trip functionality
  */
 
 /* ========== CONFIG ========== */
@@ -59,6 +60,16 @@ const DOM = {
   verificationModal: $('verification-modal'),
   verificationText: $('verification-text'),
   clearReportsBtn: $('clear-reports'),
+  // Search and Trip elements
+  searchBubble: $('search-bubble'),
+  searchExpanded: $('search-expanded'),
+  destinationInput: $('destination-input'),
+  routesList: $('routes-list'),
+  tripInfo: $('trip-info'),
+  timeLeft: $('time-left'),
+  distanceLeft: $('distance-left'),
+  startTripBtn: $('start-trip-btn'),
+  cancelTripBtn: $('cancel-trip-btn'),
   // Sound test buttons
   testChime: $('test-chime'),
   testBeep: $('test-beep'),
@@ -92,6 +103,19 @@ let currentTheme = 'dark';
 let currentVerificationReport = null;
 let adminPanelVisible = false;
 
+// Trip state
+let currentTrip = {
+  active: false,
+  destination: null,
+  route: null,
+  startTime: null,
+  totalDistance: 0,
+  totalTime: 0,
+  remainingDistance: 0,
+  remainingTime: 0,
+  interval: null
+};
+
 /* ========== AUDIO ASSETS ========== */
 const AUDIO = {
   chime: tryCreateAudio('assets/chime.mp3'),
@@ -111,6 +135,243 @@ function tryCreateAudio(path){
     console.warn('Audio not found:', path);
     return null;
   }
+}
+
+/* ========== SEARCH & TRIP SYSTEM ========== */
+function initSearchSystem() {
+  // Search bubble click
+  if (DOM.searchBubble) {
+    DOM.searchBubble.addEventListener('click', toggleSearchExpanded);
+  }
+
+  // Destination input
+  if (DOM.destinationInput) {
+    DOM.destinationInput.addEventListener('input', handleDestinationInput);
+    DOM.destinationInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        searchDestination();
+      }
+    });
+  }
+
+  // Start trip button
+  if (DOM.startTripBtn) {
+    DOM.startTripBtn.addEventListener('click', startTrip);
+  }
+
+  // Cancel trip button
+  if (DOM.cancelTripBtn) {
+    DOM.cancelTripBtn.addEventListener('click', cancelTrip);
+  }
+
+  // Close search when clicking outside
+  document.addEventListener('click', (e) => {
+    if (DOM.searchExpanded.classList.contains('visible') && 
+        !DOM.searchExpanded.contains(e.target) && 
+        !DOM.searchBubble.contains(e.target)) {
+      hideSearchExpanded();
+    }
+  });
+}
+
+function toggleSearchExpanded() {
+  if (DOM.searchExpanded.classList.contains('visible')) {
+    hideSearchExpanded();
+  } else {
+    showSearchExpanded();
+  }
+}
+
+function showSearchExpanded() {
+  DOM.searchExpanded.classList.add('visible');
+  DOM.destinationInput.focus();
+}
+
+function hideSearchExpanded() {
+  DOM.searchExpanded.classList.remove('visible');
+  DOM.destinationInput.value = '';
+  clearRoutes();
+}
+
+function handleDestinationInput(e) {
+  // You could add autocomplete here in the future
+}
+
+function searchDestination() {
+  const destination = DOM.destinationInput.value.trim();
+  if (!destination) {
+    pushToast('Please enter a destination', 'error');
+    return;
+  }
+
+  // Simulate route search (in real app, this would call a routing API)
+  simulateRouteSearch(destination);
+}
+
+function simulateRouteSearch(destination) {
+  // Clear previous routes
+  clearRoutes();
+
+  // Simulate API delay
+  setTimeout(() => {
+    // Generate 3 random routes
+    const routes = [
+      {
+        id: 1,
+        name: 'Fastest Route',
+        time: Math.floor(Math.random() * 30) + 15,
+        distance: Math.floor(Math.random() * 20) + 10,
+        details: 'Via Highway A1',
+        traffic: 'Light traffic'
+      },
+      {
+        id: 2,
+        name: 'Shortest Route', 
+        time: Math.floor(Math.random() * 40) + 20,
+        distance: Math.floor(Math.random() * 15) + 5,
+        details: 'City roads',
+        traffic: 'Moderate traffic'
+      },
+      {
+        id: 3,
+        name: 'Eco Route',
+        time: Math.floor(Math.random() * 50) + 25,
+        distance: Math.floor(Math.random() * 25) + 15,
+        details: 'Scenic route',
+        traffic: 'Light traffic'
+      }
+    ];
+
+    // Display routes
+    routes.forEach(route => {
+      const routeElement = document.createElement('button');
+      routeElement.className = 'route-option';
+      routeElement.innerHTML = `
+        <div class="route-info">
+          <div>${route.name}</div>
+          <div class="route-time">${route.time} min • ${route.distance} km</div>
+          <div class="route-details">${route.details} • ${route.traffic}</div>
+        </div>
+      `;
+      routeElement.addEventListener('click', () => selectRoute(route, destination));
+      DOM.routesList.appendChild(routeElement);
+    });
+
+    pushToast(`Found ${routes.length} routes to ${destination}`, 'success');
+  }, 1000);
+}
+
+function clearRoutes() {
+  DOM.routesList.innerHTML = '';
+}
+
+function selectRoute(route, destination) {
+  // Store trip data
+  currentTrip.destination = destination;
+  currentTrip.route = route;
+  currentTrip.totalDistance = route.distance;
+  currentTrip.totalTime = route.time;
+  currentTrip.remainingDistance = route.distance;
+  currentTrip.remainingTime = route.time;
+
+  // Update trip info display
+  DOM.timeLeft.textContent = `${route.time} min`;
+  DOM.distanceLeft.textContent = `${route.distance} km`;
+
+  // Hide search and show trip info
+  hideSearchExpanded();
+  DOM.tripInfo.classList.add('visible');
+
+  pushToast(`Route selected: ${route.name}`, 'success');
+}
+
+function startTrip() {
+  if (!currentTrip.route) {
+    pushToast('No route selected', 'error');
+    return;
+  }
+
+  currentTrip.active = true;
+  currentTrip.startTime = Date.now();
+
+  // Hide trip info and show search bubble again (but it will be hidden by active trip)
+  DOM.tripInfo.classList.remove('visible');
+  DOM.searchBubble.style.display = 'none';
+
+  // Start trip tracking
+  startTripTracking();
+
+  pushToast(`Trip started to ${currentTrip.destination}`, 'success');
+}
+
+function startTripTracking() {
+  // Update trip progress every second
+  currentTrip.interval = setInterval(() => {
+    if (!currentTrip.active) return;
+
+    // Simulate progress (in real app, this would use real GPS data)
+    const elapsedMinutes = (Date.now() - currentTrip.startTime) / 60000;
+    const progress = Math.min(elapsedMinutes / currentTrip.totalTime, 0.95); // Cap at 95%
+
+    currentTrip.remainingTime = Math.max(0, Math.round(currentTrip.totalTime * (1 - progress)));
+    currentTrip.remainingDistance = Math.max(0, Math.round(currentTrip.totalDistance * (1 - progress)));
+
+    // Update display
+    DOM.timeLeft.textContent = `${currentTrip.remainingTime} min`;
+    DOM.distanceLeft.textContent = `${currentTrip.remainingDistance} km`;
+
+    // Check if trip is complete
+    if (currentTrip.remainingTime <= 0) {
+      completeTrip();
+    }
+  }, 1000);
+}
+
+function cancelTrip() {
+  if (currentTrip.active) {
+    clearInterval(currentTrip.interval);
+  }
+
+  // Reset trip state
+  currentTrip = {
+    active: false,
+    destination: null,
+    route: null,
+    startTime: null,
+    totalDistance: 0,
+    totalTime: 0,
+    remainingDistance: 0,
+    remainingTime: 0,
+    interval: null
+  };
+
+  // Hide trip info and show search bubble
+  DOM.tripInfo.classList.remove('visible');
+  DOM.searchBubble.style.display = 'flex';
+
+  pushToast('Trip cancelled', 'info');
+}
+
+function completeTrip() {
+  clearInterval(currentTrip.interval);
+  
+  pushToast(`Arrived at ${currentTrip.destination}`, 'success');
+  
+  // Reset trip state
+  currentTrip = {
+    active: false,
+    destination: null,
+    route: null,
+    startTime: null,
+    totalDistance: 0,
+    totalTime: 0,
+    remainingDistance: 0,
+    remainingTime: 0,
+    interval: null
+  };
+
+  // Show search bubble again
+  DOM.searchBubble.style.display = 'flex';
 }
 
 /* ========== SOUND TESTING ========== */
@@ -1101,6 +1362,7 @@ async function boot() {
     initControls();
     initAdminPanel();
     initReportSystem();
+    initSearchSystem(); // Initialize search system
     startTracking();
     
     // Enable auto-center by default
