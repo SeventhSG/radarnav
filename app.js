@@ -1,11 +1,8 @@
 /**
- * app.js - Enhanced RadarNav with Report System
- * Added features:
- * - Non-selectable text and emojis
- * - Better looking PiP button
- * - Report system for police/construction
- * - Verification system with timing
- * - Audio alerts for reports
+ * app.js - Enhanced RadarNav with 5-tap admin and sound testing
+ * Changes:
+ * - Admin panel now requires 5 taps instead of 3
+ * - Added sound test buttons in admin panel
  */
 
 /* ========== CONFIG ========== */
@@ -29,6 +26,7 @@ const CONFIG = {
   REPORT_EXPIRY_HOURS: 12,
   REPORT_EXTENSION_HOURS: 1,
   MAX_NEGATIVE_VERIFICATIONS: 3,
+  ADMIN_TAP_COUNT: 5, // Changed from 3 to 5
   DEBUG: true
 };
 
@@ -59,7 +57,14 @@ const DOM = {
   reportMenu: $('report-menu'),
   verificationModal: $('verification-modal'),
   verificationText: $('verification-text'),
-  clearReportsBtn: $('clear-reports')
+  clearReportsBtn: $('clear-reports'),
+  // Sound test buttons
+  testChime: $('test-chime'),
+  testBeep: $('test-beep'),
+  testCamera: $('test-camera'),
+  testAvg: $('test-avg'),
+  testPolice: $('test-police'),
+  testConstruction: $('test-construction')
 };
 
 /* ========== STATE ========== */
@@ -104,6 +109,124 @@ function tryCreateAudio(path){
   } catch(e) {
     console.warn('Audio not found:', path);
     return null;
+  }
+}
+
+/* ========== SOUND TESTING ========== */
+function initSoundTesting() {
+  // Test Chime
+  if (DOM.testChime) {
+    DOM.testChime.addEventListener('click', () => {
+      if (AUDIO.chime) {
+        AUDIO.chime.play().catch(e => console.warn('Chime play failed:', e));
+        pushToast('Playing chime sound', 'success', 1000);
+      } else {
+        pushToast('Chime audio not found', 'error');
+      }
+    });
+  }
+
+  // Test Beep
+  if (DOM.testBeep) {
+    DOM.testBeep.addEventListener('click', () => {
+      if (AUDIO.beep) {
+        AUDIO.beep.play().catch(e => console.warn('Beep play failed:', e));
+        pushToast('Playing beep sound', 'success', 1000);
+      } else {
+        pushToast('Beep audio not found', 'error');
+      }
+    });
+  }
+
+  // Test Camera Alert
+  if (DOM.testCamera) {
+    DOM.testCamera.addEventListener('click', () => {
+      if (AUDIO.cameraMsg) {
+        AUDIO.cameraMsg.play().catch(e => console.warn('Camera alert play failed:', e));
+        pushToast('Playing camera alert', 'success', 1000);
+      } else {
+        pushToast('Camera alert audio not found', 'error');
+      }
+    });
+  }
+
+  // Test Average Zone
+  if (DOM.testAvg) {
+    DOM.testAvg.addEventListener('click', () => {
+      if (AUDIO.avgMsg) {
+        AUDIO.avgMsg.play().catch(e => console.warn('Avg zone play failed:', e));
+        pushToast('Playing average zone alert', 'success', 1000);
+      } else {
+        pushToast('Average zone audio not found', 'error');
+      }
+    });
+  }
+
+  // Test Police
+  if (DOM.testPolice) {
+    DOM.testPolice.addEventListener('click', () => {
+      if (AUDIO.police) {
+        AUDIO.police.play().catch(e => console.warn('Police play failed:', e));
+        pushToast('Playing police alert', 'success', 1000);
+      } else {
+        pushToast('Police audio not found', 'error');
+      }
+    });
+  }
+
+  // Test Construction
+  if (DOM.testConstruction) {
+    DOM.testConstruction.addEventListener('click', () => {
+      if (AUDIO.construction) {
+        AUDIO.construction.play().catch(e => console.warn('Construction play failed:', e));
+        pushToast('Playing construction alert', 'success', 1000);
+      } else {
+        pushToast('Construction audio not found', 'error');
+      }
+    });
+  }
+
+  // Test full alert sequence (chime + specific sound)
+  if (DOM.testFullAlert) {
+    DOM.testFullAlert.addEventListener('click', () => {
+      testFullAlertSequence();
+    });
+  }
+}
+
+// Test full alert sequence with chime
+function testFullAlertSequence(type = 'police') {
+  if (AUDIO.chime) {
+    AUDIO.chime.play().then(() => {
+      setTimeout(() => {
+        let specificAudio = null;
+        let alertName = '';
+        
+        switch(type) {
+          case 'police':
+            specificAudio = AUDIO.police;
+            alertName = 'Police';
+            break;
+          case 'construction':
+            specificAudio = AUDIO.construction;
+            alertName = 'Construction';
+            break;
+          case 'camera':
+            specificAudio = AUDIO.cameraMsg;
+            alertName = 'Camera';
+            break;
+          case 'avg':
+            specificAudio = AUDIO.avgMsg;
+            alertName = 'Average Zone';
+            break;
+        }
+        
+        if (specificAudio) {
+          specificAudio.play().catch(console.warn);
+          pushToast(`Playing ${alertName} alert sequence`, 'success', 1500);
+        }
+      }, 500);
+    }).catch(console.warn);
   }
 }
 
@@ -914,17 +1037,23 @@ function initControls() {
     });
   }
 
-  // Admin triple-tap
+  // ADMIN PANEL - CHANGED TO 5 TAPS
   document.body.addEventListener('touchend', (e) => {
     const t = now();
-    if (t - adminTap.last < 600) adminTap.count++; 
+    if (t - adminTap.last < 1000) adminTap.count++; 
     else adminTap.count = 1;
     
     adminTap.last = t;
-    if (adminTap.count >= 3) {
+    
+    // Show tap count feedback
+    if (adminTap.count > 1 && adminTap.count < CONFIG.ADMIN_TAP_COUNT) {
+      pushToast(`Admin: ${adminTap.count}/${CONFIG.ADMIN_TAP_COUNT} taps`, 'info', 800);
+    }
+    
+    if (adminTap.count >= CONFIG.ADMIN_TAP_COUNT) {
       adminTap.count = 0;
       DOM.adminPanel.classList.toggle('collapsed');
-      pushToast('Admin panel toggled');
+      pushToast('Admin panel toggled', 'success');
     }
   });
 
@@ -944,6 +1073,9 @@ function initControls() {
       pushToast('Alerts cleared', 'success');
     });
   }
+
+  // Initialize sound testing
+  initSoundTesting();
 }
 
 /* ========== UI HELPERS ========== */
