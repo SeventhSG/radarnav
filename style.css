@@ -331,15 +331,125 @@ body.light-mode #zoneLimitVal {
   transform: translateY(0);
 }
 
-/* ADMIN PANEL */
+/* ADMIN PANEL - FIXED POSITIONING */
 #admin-panel{
-  position:fixed;left:12px;bottom:12px;background:rgba(12,16,22,0.72);padding:10px;border-radius:10px;z-index:1200;transform:translateY(180px);transition:transform .28s;backdrop-filter:blur(6px)}
-#admin-panel:not(.collapsed){transform:translateY(0)}
-#admin-panel button{display:block;width:100%;margin:6px 0;padding:8px;border-radius:8px;border:none;background:rgba(255,255,255,0.06);color:#fff;cursor:pointer;user-select:none;}
+  position:fixed;
+  left:12px;
+  bottom:12px;
+  background:rgba(12,16,22,0.92);
+  padding:12px;
+  border-radius:12px;
+  z-index:1200;
+  transform:translateY(500px); /* Pushed way off-screen */
+  transition:transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  backdrop-filter:blur(12px);
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+  min-width: 200px;
+  opacity: 0.95;
+}
+
+#admin-panel:not(.collapsed){
+  transform:translateY(0); /* Back to normal position */
+}
+
+#admin-panel h2{
+  color:#fff;
+  margin-bottom:12px;
+  font-size:16px;
+  text-align:center;
+  border-bottom:1px solid rgba(255,255,255,0.1);
+  padding-bottom:8px;
+}
+
+#admin-panel button{
+  display:block;
+  width:100%;
+  margin:6px 0;
+  padding:10px;
+  border-radius:8px;
+  border:none;
+  background:rgba(255,255,255,0.08);
+  color:#fff;
+  cursor:pointer;
+  user-select:none;
+  font-size:13px;
+  transition:all 0.2s ease;
+  font-weight:500;
+}
+
+#admin-panel button:hover {
+  background: rgba(255,255,255,0.15);
+  transform: translateX(4px);
+}
 
 body.light-mode #admin-panel button {
-  background: rgba(0,0,0,0.06);
+  background: rgba(0,0,0,0.08);
   color: #1a1a1a;
+}
+
+body.light-mode #admin-panel button:hover {
+  background: rgba(0,0,0,0.15);
+}
+
+/* Sound Test Section in Admin Panel */
+#admin-panel h3 {
+  font-size: 14px;
+  margin: 15px 0 8px 0;
+  color: #00e5ff;
+  text-align: center;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  padding-top: 12px;
+}
+
+/* Sound test buttons */
+#test-chime,
+#test-beep,
+#test-camera,
+#test-avg,
+#test-police,
+#test-construction {
+  display: block;
+  width: 100%;
+  margin: 4px 0;
+  padding: 8px;
+  border-radius: 6px;
+  border: none;
+  background: rgba(0, 229, 255, 0.1);
+  color: #00e5ff;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+
+#test-chime:hover,
+#test-beep:hover,
+#test-camera:hover,
+#test-avg:hover,
+#test-police:hover,
+#test-construction:hover {
+  background: rgba(0, 229, 255, 0.2);
+  transform: translateX(2px);
+}
+
+body.light-mode #test-chime,
+body.light-mode #test-beep,
+body.light-mode #test-camera,
+body.light-mode #test-avg,
+body.light-mode #test-police,
+body.light-mode #test-construction {
+  background: rgba(0, 122, 204, 0.1);
+  color: #007acc;
+}
+
+body.light-mode #test-chime:hover,
+body.light-mode #test-beep:hover,
+body.light-mode #test-camera:hover,
+body.light-mode #test-avg:hover,
+body.light-mode #test-police:hover,
+body.light-mode #test-construction:hover {
+  background: rgba(0, 122, 204, 0.2);
 }
 
 /* POPUP container */
@@ -426,60 +536,10 @@ body.light-mode #pip-fallback-speed {
     width: 85%;
     padding: 16px;
   }
-}
-/* Sound Test Section in Admin Panel */
-#admin-panel h3 {
-  font-size: 14px;
-  margin-bottom: 8px;
-  color: #00e5ff;
-  text-align: center;
-}
-
-/* Sound test buttons */
-#test-chime,
-#test-beep,
-#test-camera,
-#test-avg,
-#test-police,
-#test-construction {
-  display: block;
-  width: 100%;
-  margin: 4px 0;
-  padding: 6px;
-  border-radius: 6px;
-  border: none;
-  background: rgba(0, 229, 255, 0.1);
-  color: #00e5ff;
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.2s ease;
-}
-
-#test-chime:hover,
-#test-beep:hover,
-#test-camera:hover,
-#test-avg:hover,
-#test-police:hover,
-#test-construction:hover {
-  background: rgba(0, 229, 255, 0.2);
-  transform: translateX(2px);
-}
-
-body.light-mode #test-chime,
-body.light-mode #test-beep,
-body.light-mode #test-camera,
-body.light-mode #test-avg,
-body.light-mode #test-police,
-body.light-mode #test-construction {
-  background: rgba(0, 122, 204, 0.1);
-  color: #007acc;
-}
-
-body.light-mode #test-chime:hover,
-body.light-mode #test-beep:hover,
-body.light-mode #test-camera:hover,
-body.light-mode #test-avg:hover,
-body.light-mode #test-police:hover,
-body.light-mode #test-construction:hover {
-  background: rgba(0, 122, 204, 0.2);
+  #admin-panel {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    min-width: auto;
+  }
 }
