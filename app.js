@@ -1037,7 +1037,7 @@ function initControls() {
     });
   }
 
-  // ADMIN PANEL - CHANGED TO 5 TAPS
+  // ADMIN PANEL - 5 TAPS (FIXED)
   document.body.addEventListener('touchend', (e) => {
     const t = now();
     if (t - adminTap.last < 1000) adminTap.count++; 
@@ -1052,8 +1052,21 @@ function initControls() {
     
     if (adminTap.count >= CONFIG.ADMIN_TAP_COUNT) {
       adminTap.count = 0;
-      DOM.adminPanel.classList.toggle('collapsed');
-      pushToast('Admin panel toggled', 'success');
+      // Toggle the collapsed class
+      if (DOM.adminPanel.classList.contains('collapsed')) {
+        DOM.adminPanel.classList.remove('collapsed');
+        pushToast('Admin panel opened', 'success');
+      } else {
+        DOM.adminPanel.classList.add('collapsed');
+        pushToast('Admin panel closed', 'info');
+      }
+    }
+  });
+
+  // Close admin panel when clicking outside (optional)
+  document.addEventListener('click', (e) => {
+    if (DOM.adminPanel && !DOM.adminPanel.contains(e.target) && !DOM.adminPanel.classList.contains('collapsed')) {
+      DOM.adminPanel.classList.add('collapsed');
     }
   });
 
