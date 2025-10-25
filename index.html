@@ -28,6 +28,35 @@
     </div>
   </div>
 
+  <!-- Search Bubble -->
+  <button id="search-bubble" title="Search destination">🔍</button>
+
+  <!-- Search Expanded -->
+  <div id="search-expanded">
+    <h3>Search Destination</h3>
+    <input type="text" id="destination-input" placeholder="Enter your destination...">
+    <div id="routes-list">
+      <!-- Routes will be dynamically added here -->
+    </div>
+  </div>
+
+  <!-- Trip Info -->
+  <div id="trip-info">
+    <h3>Active Trip</h3>
+    <div class="trip-stats">
+      <div class="trip-stat">
+        <div id="time-left" class="trip-value">25 min</div>
+        <div class="trip-label">Time Left</div>
+      </div>
+      <div class="trip-stat">
+        <div id="distance-left" class="trip-value">18 km</div>
+        <div class="trip-label">Distance Left</div>
+      </div>
+    </div>
+    <button id="start-trip-btn">Let's Go!</button>
+    <button id="cancel-trip-btn">Cancel Trip</button>
+  </div>
+
   <!-- Center button -->
   <button id="center-btn" title="Center on location">📍</button>
 
