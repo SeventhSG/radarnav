@@ -1,73 +1,63 @@
-/* style.css - UI for RadarNav
-   Mobile-first, modern glass look
-*/
+/* style.css - RadarNav UI (mobile-first) */
 
 /* reset */
 *{box-sizing:border-box;margin:0;padding:0}
 html,body,#map{height:100%;width:100%}
-body{font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;background:#0b1220;overflow:hidden;color:#fff}
+body{font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#071021;color:#fff;overflow:hidden}
 
 /* MAP */
-#map{position:fixed;left:0;top:0;width:100%;height:100%;z-index:1}
+#map{position:fixed;inset:0;z-index:1}
 
-/* top bar */
+/* TOP BAR */
 #top-bar{
   position:fixed;left:50%;transform:translateX(-50%);
-  top:10px;width:calc(100% - 28px);max-width:640px;
-  display:flex;align-items:center;justify-content:space-between;
-  padding:10px 14px;border-radius:12px;background:rgba(8,12,20,0.6);
-  backdrop-filter: blur(8px);z-index:1100;box-shadow:0 8px 24px rgba(0,0,0,0.45)
+  top:10px;width:calc(100% - 28px);max-width:640px;padding:8px 12px;border-radius:12px;
+  background:rgba(12,18,24,0.7);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:space-between;z-index:1200;
+  box-shadow:0 8px 30px rgba(0,0,0,0.5);
 }
-#top-bar h1{font-size:16px;color:#e6f7ff}
+#top-bar h1{font-size:16px;letter-spacing:0.4px}
 
-/* speed widget */
-#speed-display{
-  position:fixed;right:18px;bottom:22px;z-index:1100;
-  width:110px;height:110px;border-radius:50%;
-  background:linear-gradient(180deg, rgba(0,12,20,0.8), rgba(8,20,30,0.6));
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  box-shadow:0 8px 24px rgba(0,0,0,0.6);backdrop-filter: blur(6px);
-}
-#speed-value{font-size:36px;font-weight:700;color:#00e5ff}
-#speed-unit{font-size:12px;color:rgba(255,255,255,0.8)}
-
-/* alert overlay */
-#alert-overlay{position:fixed;left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;z-index:1200;pointer-events:none;opacity:0;transition:opacity .28s}
-#alert-overlay.hidden{pointer-events:none;opacity:0}
-#alert-box{pointer-events:auto;background:linear-gradient(135deg,#ff7a7a,#c90000);color:#fff;padding:18px 28px;border-radius:16px;text-align:center;box-shadow:0 14px 38px rgba(0,0,0,0.5)}
-#alert-box i{font-size:36px;display:block;margin-bottom:6px}
+/* ALERT OVERLAY CENTERED */
+#alert-overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:1300;pointer-events:none;opacity:0;transition:opacity .28s}
+#alert-overlay:not(.hidden){pointer-events:auto;opacity:1}
+#alert-box{pointer-events:auto;background:linear-gradient(135deg,#ff7a7a,#c90000);padding:18px 24px;border-radius:14px;box-shadow:0 12px 36px rgba(0,0,0,0.6);text-align:center}
+#alert-box i{font-size:34px;margin-bottom:6px}
 #alert-text{font-size:18px;font-weight:700}
 
-/* avg zone bar */
-#avgZoneBar{position:fixed;left:50%;transform:translateX(-50%);bottom:140px;width:86%;max-width:760px;height:36px;background:rgba(12,20,30,0.55);border-radius:20px;overflow:hidden;display:flex;align-items:center;padding:6px 10px;z-index:1100}
-#progressFill{height:100%;width:0%;background:linear-gradient(90deg,#00e5ff,#0a3);transition:width .18s linear}
-#carMarker{position:absolute;width:10px;height:36px;background:#ffd166;border-radius:6px;left:0;top:0;transform:translateX(-50%)}
-#avgSpeedVal, #zoneLimitVal{position:absolute;top:-26px;font-size:13px;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,0.5)}
+/* SPEED HUD */
+#speed-display{position:fixed;right:18px;bottom:22px;width:110px;height:110px;border-radius:50%;background:linear-gradient(180deg,rgba(5,12,20,0.85),rgba(8,20,30,0.6));display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1200;box-shadow:0 10px 40px rgba(0,0,0,0.6);backdrop-filter: blur(6px);}
+#speed-value{font-size:36px;color:#00e5ff;font-weight:700}
+#speed-unit{font-size:12px;color:rgba(255,255,255,0.8)}
 
-/* admin panel */
-#admin-panel{position:fixed;left:12px;bottom:12px;background:rgba(16,20,26,0.7);padding:10px;border-radius:10px;z-index:1200;transform:translateY(180px);transition:transform .28s;backdrop-filter: blur(6px)}
+/* AVERAGE ZONE BAR */
+#avgZoneBar{position:fixed;left:50%;transform:translateX(-50%);bottom:140px;width:86%;max-width:760px;height:36px;background:rgba(16,22,30,0.6);border-radius:20px;overflow:hidden;display:flex;align-items:center;padding:6px 12px;z-index:1200;backdrop-filter:blur(6px)}
+#progressFill{height:100%;width:0%;background:linear-gradient(90deg,#00e5ff,#0a3);transition:width .18s linear;border-radius:12px}
+#avgSpeedVal,#zoneLimitVal{position:absolute;top:-28px;font-size:13px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.4)}
+
+/* CENTER BUTTON */
+#center-btn{position:fixed;left:18px;bottom:22px;background:rgba(8,12,20,0.85);border-radius:12px;padding:10px 12px;color:#fff;z-index:1200;box-shadow:0 8px 24px rgba(0,0,0,0.5)}
+
+/* ADMIN PANEL */
+#admin-panel{position:fixed;left:12px;bottom:12px;background:rgba(12,16,22,0.72);padding:10px;border-radius:10px;z-index:1200;transform:translateY(180px);transition:transform .28s;backdrop-filter:blur(6px)}
 #admin-panel:not(.collapsed){transform:translateY(0)}
-#admin-panel h2{font-size:14px;margin-bottom:8px}
 #admin-panel button{display:block;width:100%;margin:6px 0;padding:8px;border-radius:8px;border:none;background:rgba(255,255,255,0.06);color:#fff}
 
-/* popup container */
-#popup-container{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:1300;display:flex;flex-direction:column;gap:8px}
-.popup{padding:8px 14px;border-radius:8px;background:rgba(0,0,0,0.7);color:#fff;box-shadow:0 10px 20px rgba(0,0,0,0.4);transition:opacity .28s}
+/* POPUP container */
+#popup-container{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:1400;display:flex;flex-direction:column;gap:8px}
+.popup{padding:8px 12px;border-radius:8px;background:rgba(0,0,0,0.7);box-shadow:0 10px 24px rgba(0,0,0,0.5);transition:opacity .22s}
 .popup.success{background:linear-gradient(90deg,#0acf60,#07b36a)}
 .popup.error{background:linear-gradient(90deg,#ff5f5f,#c92b2b)}
 
-/* user icon */
+/* USER MARKER */
 .user-icon-wrapper{width:44px;height:44px}
 .user-icon{width:44px;height:44px;display:flex;align-items:center;justify-content:center}
-.car-arrow{width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-bottom:18px solid #00e5ff;filter: drop-shadow(0 2px 8px rgba(0,229,255,0.18))}
+.car-arrow{width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-bottom:18px solid #00e5ff;filter:drop-shadow(0 2px 8px rgba(0,229,255,0.15))}
 
-/* pip canvas hidden */
-#pipCanvas{display:none}
-#pipVideo{display:none}
+/* PIP hidden (video/canvas) */
+#pipVideo,#pipCanvas{display:none}
 
-/* small responsive tweaks */
+/* responsive */
 @media (max-width:420px){
-  #speed-display{right:12px;bottom:18px;width:96px;height:96px}
+  #speed-display{width:92px;height:92px;right:12px;bottom:18px}
   #speed-value{font-size:30px}
-  #avgZoneBar{bottom:120px}
 }
