@@ -1362,7 +1362,7 @@ async function boot() {
     initControls();
     initAdminPanel();
     initReportSystem();
-    initSearchSystem(); // Initialize search system
+    initSearchSystem(); // Make sure this line is here!
     startTracking();
     
     // Enable auto-center by default
