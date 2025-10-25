@@ -427,3 +427,59 @@ body.light-mode #pip-fallback-speed {
     padding: 16px;
   }
 }
+/* Sound Test Section in Admin Panel */
+#admin-panel h3 {
+  font-size: 14px;
+  margin-bottom: 8px;
+  color: #00e5ff;
+  text-align: center;
+}
+
+/* Sound test buttons */
+#test-chime,
+#test-beep,
+#test-camera,
+#test-avg,
+#test-police,
+#test-construction {
+  display: block;
+  width: 100%;
+  margin: 4px 0;
+  padding: 6px;
+  border-radius: 6px;
+  border: none;
+  background: rgba(0, 229, 255, 0.1);
+  color: #00e5ff;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+#test-chime:hover,
+#test-beep:hover,
+#test-camera:hover,
+#test-avg:hover,
+#test-police:hover,
+#test-construction:hover {
+  background: rgba(0, 229, 255, 0.2);
+  transform: translateX(2px);
+}
+
+body.light-mode #test-chime,
+body.light-mode #test-beep,
+body.light-mode #test-camera,
+body.light-mode #test-avg,
+body.light-mode #test-police,
+body.light-mode #test-construction {
+  background: rgba(0, 122, 204, 0.1);
+  color: #007acc;
+}
+
+body.light-mode #test-chime:hover,
+body.light-mode #test-beep:hover,
+body.light-mode #test-camera:hover,
+body.light-mode #test-avg:hover,
+body.light-mode #test-police:hover,
+body.light-mode #test-construction:hover {
+  background: rgba(0, 122, 204, 0.2);
+}
