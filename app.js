@@ -139,9 +139,22 @@ function tryCreateAudio(path){
 
 /* ========== SEARCH & TRIP SYSTEM ========== */
 function initSearchSystem() {
+  console.log('Initializing search system...');
+  
+  // Debug: Check if elements exist
+  console.log('Search bubble:', DOM.searchBubble);
+  console.log('Search expanded:', DOM.searchExpanded);
+  console.log('Destination input:', DOM.destinationInput);
+  
   // Search bubble click
   if (DOM.searchBubble) {
-    DOM.searchBubble.addEventListener('click', toggleSearchExpanded);
+    DOM.searchBubble.addEventListener('click', function(e) {
+      console.log('Search bubble clicked!');
+      e.stopPropagation();
+      toggleSearchExpanded();
+    });
+  } else {
+    console.error('Search bubble element not found!');
   }
 
   // Destination input
@@ -169,9 +182,36 @@ function initSearchSystem() {
     if (DOM.searchExpanded.classList.contains('visible') && 
         !DOM.searchExpanded.contains(e.target) && 
         !DOM.searchBubble.contains(e.target)) {
+      console.log('Click outside - closing search');
       hideSearchExpanded();
     }
   });
+
+  console.log('Search system initialized');
+}
+
+function toggleSearchExpanded() {
+  console.log('toggleSearchExpanded called');
+  if (DOM.searchExpanded.classList.contains('visible')) {
+    console.log('Hiding search');
+    hideSearchExpanded();
+  } else {
+    console.log('Showing search');
+    showSearchExpanded();
+  }
+}
+
+function showSearchExpanded() {
+  console.log('showSearchExpanded called');
+  DOM.searchExpanded.classList.add('visible');
+  DOM.destinationInput.focus();
+}
+
+function hideSearchExpanded() {
+  console.log('hideSearchExpanded called');
+  DOM.searchExpanded.classList.remove('visible');
+  DOM.destinationInput.value = '';
+  clearRoutes();
 }
 
 function toggleSearchExpanded() {
