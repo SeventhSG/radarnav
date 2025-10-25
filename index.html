@@ -30,6 +30,30 @@
   <!-- Center button -->
   <button id="center-btn" title="Center on location">📍</button>
 
+  <!-- Report button -->
+  <button id="report-button" title="Report incident">⚠️</button>
+
+  <!-- Report menu -->
+  <div id="report-menu" class="hidden">
+    <h3>Report Incident</h3>
+    <button class="report-option" data-type="police">
+      <span>🚓</span> Police Check
+    </button>
+    <button class="report-option" data-type="construction">
+      <span>🚧</span> Road Construction
+    </button>
+  </div>
+
+  <!-- Verification modal -->
+  <div id="verification-modal" class="hidden">
+    <h3>Verify Report</h3>
+    <p id="verification-text">Is this incident still present?</p>
+    <div class="verification-buttons">
+      <button class="verification-btn yes">Yes, Still There</button>
+      <button class="verification-btn no">No, It's Gone</button>
+    </div>
+  </div>
+
   <!-- Alert overlay -->
   <div id="alert-overlay" class="hidden" style="opacity:0">
     <div id="alert-box">
@@ -58,6 +82,7 @@
     <button id="reload-btn">Reload Data</button>
     <button id="clear-alerts">Clear Alerts</button>
     <button id="toggle-auto-center">Auto-center: Off</button>
+    <button id="clear-reports">Clear Reports</button>
   </div>
 
   <!-- Popups -->
