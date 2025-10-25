@@ -22,12 +22,13 @@
   <div id="top-bar">
     <h1>RadarNav</h1>
     <div style="display:flex;gap:8px;align-items:center">
+      <button id="theme-toggle" title="Toggle dark/light mode">🌙</button>
       <button id="toggle-pip">Enable PiP</button>
     </div>
   </div>
 
   <!-- Center button -->
-  <button id="center-btn">Center</button>
+  <button id="center-btn" title="Center on location">📍</button>
 
   <!-- Alert overlay -->
   <div id="alert-overlay" class="hidden" style="opacity:0">
@@ -56,6 +57,7 @@
     <h2>Admin</h2>
     <button id="reload-btn">Reload Data</button>
     <button id="clear-alerts">Clear Alerts</button>
+    <button id="toggle-auto-center">Auto-center: Off</button>
   </div>
 
   <!-- Popups -->
